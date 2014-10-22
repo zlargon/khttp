@@ -23,17 +23,36 @@ void test_digest()
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_DIGEST);
     //khttp_set_uri(ctx, "https://www.google.com:9876/afdlsa/");
     khttp_perform(ctx);
-    if(ctx->hp.status_code == 401){
-        /*
-        printf("Find auth\n");
-        char *str = khttp_find_header(ctx, "WWW-Authenticate");
-        khttp_parse_auth(ctx, str);
-        printf("realm: %s\n", ctx->realm);
-        printf("nonce: %s\n", ctx->nonce);
-        printf("opaque: %s\n", ctx->opaque);
-        printf("qop: %s\n", ctx->qop);
-        */
-    }
+    khttp_destroy(ctx);
+}
+
+void test_digest_fail()
+{
+    khttp_ctx *ctx = khttp_new();
+    khttp_set_uri(ctx, "http://localhost:8888/alive");
+    khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_DIGEST);
+    //khttp_set_uri(ctx, "https://www.google.com:9876/afdlsa/");
+    khttp_perform(ctx);
+    khttp_destroy(ctx);
+}
+
+void test_basic_but_digest()
+{
+    khttp_ctx *ctx = khttp_new();
+    khttp_set_uri(ctx, "http://localhost:8888/alive");
+    khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_BASIC);
+    //khttp_set_uri(ctx, "https://www.google.com:9876/afdlsa/");
+    khttp_perform(ctx);
+    khttp_destroy(ctx);
+}
+
+void test_basic_but_digest_fail()
+{
+    khttp_ctx *ctx = khttp_new();
+    khttp_set_uri(ctx, "http://localhost:8888/alive");
+    khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_BASIC);
+    //khttp_set_uri(ctx, "https://www.google.com:9876/afdlsa/");
+    khttp_perform(ctx);
     khttp_destroy(ctx);
 }
 
@@ -57,7 +76,12 @@ void test_basic()
 int main()
 {
         //test_url_parse();
-    //test_digest();
-    test_basic();
-    test_basic_fail();
+    while(1){
+        //test_digest();
+        //test_digest_fail();
+        //test_basic();
+        //test_basic_fail();
+        //test_basic_but_digest();
+        test_basic_but_digest_fail();
+    }
 }

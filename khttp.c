@@ -311,9 +311,13 @@ void khttp_destroy(khttp_ctx *ctx)
         SSL_set_shutdown(ctx->ssl, 2);
         SSL_shutdown(ctx->ssl);
         SSL_free(ctx->ssl);
+        ctx->ssl = NULL;
     }
     if(ctx->fd > 0) close(ctx->fd);
-    if(ctx->body) free(ctx->body);
+    if(ctx->body) {
+        free(ctx->body);
+        ctx->body = NULL;
+    }
     if(ctx){
         free(ctx);
     }
@@ -424,6 +428,21 @@ void khttp_dump_uri(khttp_ctx *ctx)
     printf("path: %s\n", ctx->path);
 }
 
+void khttp_dump_message_flow(char *data, int len, int way)
+{
+#ifdef KHTTP_DEBUG_SESS
+    //data[len]  = 0;
+    printf("----------------------------------------------\n");
+    if(way == 0){
+        printf("          Client   >>>    Server\n");
+    }else{
+        printf("          Server   >>>    Client\n");
+    }
+    printf("----------------------------------------------\n");
+    printf("%s\n", data);
+    printf("----------------------------------------------\n");
+#endif
+}
 
 int http_send(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
@@ -623,6 +642,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                 "Accept: */*\r\n"
                 "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, ctx->port);
             free(base64);
+            base64 = NULL;
         }else{
             len = snprintf(req, 1024, "GET %s HTTP/1.1\r\n"
                 "User-Agent: %s\r\n"
@@ -631,13 +651,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                 "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, ctx->port);
         }
     }
-#ifdef KHTTP_DEBUG_SESS
-    printf("----------------------------------------------\n");
-    printf("          Client   >>>    Server\n");
-    printf("----------------------------------------------\n");
-    printf("%s\n", req);
-    printf("----------------------------------------------\n");
-#endif
+    khttp_dump_message_flow(req, len, 0);
     if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
         LOG_ERROR("khttp request send failure\n");
     }
@@ -726,13 +740,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
             LOG_DEBUG("%s\n", req);
         }
     }
-#ifdef KHTTP_DEBUG_SESS
-    printf("----------------------------------------------\n");
-    printf("          Client   >>>    Server\n");
-    printf("----------------------------------------------\n");
-    printf("%s\n", req);
-    printf("----------------------------------------------\n");
-#endif
+    khttp_dump_message_flow(req, len, 0);
     if(cnonce_b64) free(cnonce_b64);
     if(req) free(req);
     return 0;
@@ -769,21 +777,14 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
     ctx->body = malloc(ctx->body_len);
     //LOG_DEBUG("malloc %zu byte for body\n", ctx->body_len);
     memset(ctx->body, 0, ctx->body_len);
-    ctx->body_len = 0;
     if(ctx->body == NULL) return -KHTTP_ERR_OOM;
     http_parser_execute(&ctx->hp, &http_parser_cb, data, total);
-    LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
-#ifdef KHTTP_DEBUG_SESS
-    data[total] = 0;
-    printf("----------------------------------------------\n");
-    printf("          Server  >>>>>    Client\n");
-    printf("----------------------------------------------\n");
-    printf("%s\n", data);
-    printf("----------------------------------------------\n");
-#endif
+    //LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
+    //FIXME why mark end of data will crash. WTF
+    //data[total] = 0;
+    khttp_dump_message_flow(data, total, 0);
     // Free receive buffer
     free(data);
-    //printf("----------------\n%s\n---------------\n", data);
     return KHTTP_ERR_OK;
 }
 
@@ -859,7 +860,7 @@ int khttp_perform(khttp_ctx *ctx)
                     LOG_ERROR("khttp parse auth string failure\n");
                     goto err;
                 }
-                if(count == 1){
+                if(count == 1 || (count == 0 && ctx->auth_type == KHTTP_AUTH_BASIC)){
                     goto end;
                 }
                 break;
