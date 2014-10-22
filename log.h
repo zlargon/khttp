@@ -6,6 +6,9 @@
 #define WARN    2
 #define INFO    1
 #define DEBUG   0
+
+#define LOG_MAX_CHAR    2048
+
 void log_print(int level, char *file, int line, char *fmt, ...);
 #define LOG(level, fmt, args...) log_print(level, __FILE__,__LINE__, fmt, ##args)
 

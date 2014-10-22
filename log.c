@@ -77,7 +77,7 @@ int log_close_file()
 
 void log_print(int level, char *file, int line, char *fmt, ...)
 {
-    char buf[1024];
+    char buf[LOG_MAX_CHAR];
     va_list vl;
     va_start(vl, fmt);
     vsnprintf(buf, sizeof(buf),fmt, vl);

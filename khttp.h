@@ -27,6 +27,14 @@
 #define KHTTP_PASS_LEN      128
 #define KHTTP_USER_LEN      128
 
+#define KHTTP_NONCE_LEN     64
+#define KHTTP_QOP_LEN       64
+#define KHTTP_REALM_LEN     64
+#define KHTTP_OPAQUE_LEN    64
+
+#define KHTTP_CNONCE_LEN    512
+#define KHTTP_RESP_LEN      1024
+
 #define KHTTP_HTTP_PORT     80
 #define KHTTP_HTTPS_PORT    443
 
@@ -39,6 +47,14 @@
 #define KHTTP_RECV_TIMEO    10000
 
 #define KHTTP_SSL_DEPTH     1
+#define KHTTP_NETWORK_BUF   1500
+
+
+#define KHTTP_USER_AGENT    "khttp/0.1"
+
+#define KHTTP_DEBUG_SESS    1
+#define KHTTP_DEBUG_FLOW    1
+
 
 enum{
     KHTTP_GET,
@@ -83,18 +99,28 @@ typedef struct khttp_ctx {
     struct sockaddr_in  serv_addr;
     int                 proto;                          //KHTTP_HTTP / KHTTP_HTTPS
     int                 method;                         //KHTTP_GET / KHTTP_POST
-    char                *header[KHTTP_HEADER_MAX];
+    int                 header_count;
+    char                *header_field[KHTTP_HEADER_MAX];
+    char                *header_value[KHTTP_HEADER_MAX];
     char                host[KHTTP_HOST_LEN];
     char                path[KHTTP_PATH_LEN];
     int                 port;
+    // Authentication
+    int                 auth_type;
     int                 pass_serv_auth;
     char                cert_path[KHTTP_PATH_LEN];
     char                key_path[KHTTP_PATH_LEN];
     char                key_pass[KHTTP_PASS_LEN];
     char                username[KHTTP_USER_LEN];
     char                password[KHTTP_PASS_LEN];
-    int                 body_len;
+    char                realm[KHTTP_REALM_LEN];
+    char                opaque[KHTTP_OPAQUE_LEN];
+    char                qop[KHTTP_QOP_LEN];
+    char                nonce[KHTTP_NONCE_LEN];
+    // Body
+    size_t              body_len;
     void                *body;
+    int                 done;
     http_parser         hp;
 #ifdef OPENSSL
     BIO                 *bio;

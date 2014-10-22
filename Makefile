@@ -21,3 +21,4 @@ test:
 
 clean:
 	rm -rf *.o *.a *.so *.exe
+	$(MAKE) -C test clean
