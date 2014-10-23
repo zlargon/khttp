@@ -761,7 +761,7 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
             return -KHTTP_ERR_RECV;
         }
         //printf("%s\n", buf);
-        data = realloc(data, total + len);
+        data = realloc(data, total + len + 1);
         memcpy(data + total, buf, len);
         total += len;
         http_parser_init(&ctx->hp, HTTP_RESPONSE);
@@ -774,14 +774,16 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
     }
     http_parser_init(&ctx->hp, HTTP_RESPONSE);
     // Malloc memory for body
-    ctx->body = malloc(ctx->body_len);
+    ctx->body = malloc(ctx->body_len + 1);
     //LOG_DEBUG("malloc %zu byte for body\n", ctx->body_len);
-    memset(ctx->body, 0, ctx->body_len);
+    memset(ctx->body, 0, ctx->body_len + 1);
+    //Set body length to 0 before parse
+    ctx->body_len = 0;
     if(ctx->body == NULL) return -KHTTP_ERR_OOM;
     http_parser_execute(&ctx->hp, &http_parser_cb, data, total);
     //LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
     //FIXME why mark end of data will crash. WTF
-    //data[total] = 0;
+    data[total] = 0;
     khttp_dump_message_flow(data, total, 0);
     // Free receive buffer
     free(data);
