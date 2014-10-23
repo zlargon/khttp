@@ -6,9 +6,16 @@ void aa(const char *func, int line)
 {
     printf("who call me %s:%d\n", func, line);
 }
-void test_url_parse()
+void test_chunked_encode()
 {
-    //LOG_INFO("Test start\n");
+    khttp_ctx *ctx = khttp_new();
+    khttp_set_uri(ctx, "http://www.inside.com.tw");
+    khttp_perform(ctx);
+    khttp_destroy(ctx);
+}
+
+void test_content_length()
+{
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://www.inside.com.tw");
     khttp_perform(ctx);
@@ -71,7 +78,8 @@ void test_basic()
 int main()
 {
     //while(1){
-        test_url_parse();
+        test_chunked_encode();
+        test_content_length();
         test_digest();
         test_digest_fail();
         test_basic();

@@ -46,7 +46,7 @@ void base64_cleanup() {
     free(decoding_table);
 }
 
-char *base64_encode(const unsigned char *data,
+char *khttp_base64_encode(const unsigned char *data,
                     size_t input_length,
                     size_t *output_length) {
 
@@ -75,7 +75,7 @@ char *base64_encode(const unsigned char *data,
     encoded_data[*output_length] = '\0';
     return encoded_data;
 }
-char *base64_decode(const char *data,
+char *khttp_base64_decode(const char *data,
                     size_t input_length,
                     size_t *output_length) {
     if (decoding_table == NULL) build_decoding_table();
@@ -312,6 +312,7 @@ void khttp_destroy(khttp_ctx *ctx)
         SSL_shutdown(ctx->ssl);
         SSL_free(ctx->ssl);
         ctx->ssl = NULL;
+        if(ctx->ssl_ctx) SSL_CTX_free(ctx->ssl_ctx);
     }
     if(ctx->fd > 0) close(ctx->fd);
     if(ctx->body) {
@@ -467,14 +468,51 @@ int http_send(khttp_ctx *ctx, void *buf, int len, int timeout)
                 LOG_ERROR("khttp send error %d (%s)\n", errno, strerror(errno));
                 return -KHTTP_ERR_SEND;
             }
+        }else{
+            return -KHTTP_ERR_DISCONN;
         }
     }while(sent < len);
     return KHTTP_ERR_OK;
 }
 
+int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
+{
+    int sent = 0;
+    char *head = buf;
+    struct timeval tv;
+    int ret = KHTTP_ERR_OK;
+    int retry = 3;//FIXME define in header
+    tv.tv_sec = timeout / 1000;
+    tv.tv_usec = (timeout % 1000) * 1000;
+    if(ctx->fd < 0) return -KHTTP_ERR_NO_FD;
+    do {
+        fd_set fs;
+        FD_ZERO(&fs);
+        FD_SET(ctx->fd, &fs);
+        int res = select(ctx->fd + 1, NULL, &fs, NULL, &tv);
+        if(res >= 0){
+            LOG_DEBUG("send data...\n");
+            res = SSL_write(ctx->ssl, head + sent, len - sent);
+            if(res > 0){
+                sent += res;
+            }else if(errno == -EAGAIN && retry != 0){
+                retry--;
+            }else{
+                ret = -KHTTP_ERR_SEND;
+                break;
+            }
+        }else{
+            ret = -KHTTP_ERR_DISCONN;
+            break;
+        }
+    }while(sent < len);
+    LOG_DEBUG("send https success\n%s\n", (char *)buf);
+    return ret;
+}
+
 int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
-    int ret = 0;
+    int ret = KHTTP_ERR_OK;
     struct timeval tv;
     tv.tv_sec = timeout / 1000;
     tv.tv_usec = (timeout % 1000)  * 1000;
@@ -498,6 +536,49 @@ int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
     return ret;
 }
 
+int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
+{
+    if(ctx == NULL || buf == NULL || len <= 0) return -KHTTP_ERR_PARAM;
+    int ret = KHTTP_ERR_OK;
+    int res = 0;
+    struct timeval tv;
+    tv.tv_sec = timeout / 1000;
+    tv.tv_usec = (timeout % 1000) * 1000;
+    if(SSL_pending(ctx->ssl) > 0){
+        //data available
+        res = SSL_read(ctx->ssl, buf, len);
+        if(res <= 0){
+            LOG_ERROR("SSL_read  error %d(%s)\n", errno, strerror(errno));
+            ret = -KHTTP_ERR_RECV;
+            goto end;
+        }
+        ret = res;
+    }else{
+        //data not available select socket
+        fd_set fs;
+        FD_ZERO(&fs);
+        FD_SET(ctx->fd, &fs);
+        res = select(ctx->fd + 1, &fs, NULL, NULL, &tv);
+        if(res < 0){
+            LOG_ERROR("https select error %d(%s)\n", errno, strerror(errno));
+            ret = -KHTTP_ERR_RECV;
+            goto end;
+        }else if(res == 0){
+            LOG_ERROR("https select timeout\n");
+            ret = -KHTTP_ERR_TIMEOUT;
+            goto end;
+        }
+        res = SSL_read(ctx->ssl, buf, len);
+        if(res <= 0){
+            LOG_ERROR("SSL_read  error %d(%s)\n", errno, strerror(errno));
+            ret = -KHTTP_ERR_RECV;
+            goto end;
+        }
+        ret = res;
+    }
+end:
+    return ret;
+}
 
 int khttp_set_uri(khttp_ctx *ctx, char *uri)
 {
@@ -512,13 +593,13 @@ int khttp_set_uri(khttp_ctx *ctx, char *uri)
     if(strncasecmp(uri, "https://", 8) == 0) {
         ctx->proto = KHTTP_HTTPS;
         host = head + 8;
-        //TODO Send default send / recv callback
+        ctx->send = https_send;
+        ctx->recv = https_recv;
     } else if(strncasecmp(uri, "http://", 7) == 0) {
         ctx->proto = KHTTP_HTTP;
         host = head + 7;
         ctx->send = http_send;
         ctx->recv = http_recv;
-        //TODO Send default send / recv callback
     } else {
         ctx->proto = KHTTP_HTTP;
         host = head;
@@ -550,13 +631,26 @@ static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store)
 {
     int depth, err;
     X509 *cert = NULL;
-    //return 0;
+    char data[KHTTP_SSL_DATA_LEN];
+    if(!ok) {
+        cert = X509_STORE_CTX_get_current_cert(store);
+        depth = X509_STORE_CTX_get_error_depth(store);
+        err = X509_STORE_CTX_get_error(store);
+        LOG_DEBUG("Error with certificate at depth: %i", depth);
+        X509_NAME_oneline(X509_get_issuer_name(cert), data, KHTTP_SSL_DATA_LEN);
+        LOG_DEBUG(" issuer = %s", data);
+        X509_NAME_oneline(X509_get_subject_name(cert), data, KHTTP_SSL_DATA_LEN);
+        LOG_DEBUG(" subject = %s", data);
+        LOG_DEBUG(" err %i:%s", err, X509_verify_cert_error_string(err));
+        return 0;
+    }
     return ok;
 }
 
 
 int khttp_ssl_setup(khttp_ctx *ctx)
 {
+    int ret = 0;
     SSL_load_error_strings();
     if(SSL_library_init() != 1) {
         LOG_ERROR("SSL library init failure\n");
@@ -588,22 +682,38 @@ int khttp_ssl_setup(khttp_ctx *ctx)
     }
     if(SSL_CTX_check_private_key(ctx->ssl_ctx) == 1) {
         LOG_DEBUG("khttp check private key success\n");
-    }else{
-        //TODO
     }
     if((ctx->ssl = SSL_new(ctx->ssl_ctx)) == NULL) {
         LOG_ERROR("create SSL failure\n");
         return -KHTTP_ERR_SSL;
     }
-    if(SSL_set_fd(ctx->ssl, ctx->fd) != 1) {
-        LOG_ERROR("set SSL fd failure\n");
+    if((ret = SSL_set_fd(ctx->ssl, ctx->fd)) != 1) {
+        ret = SSL_get_error(ctx->ssl, ret);
+        LOG_ERROR("set SSL fd failure %d\n", ret);
         return -KHTTP_ERR_SSL;
     }
-    if(SSL_connect(ctx->ssl) != 1) {
+    if((ret = SSL_connect(ctx->ssl)) != 1) {
+        ret = SSL_get_error(ctx->ssl, ret);
+        LOG_ERROR("SSL_connect failure %d\n", ret);
         return -KHTTP_ERR_SSL;//TODO
     }
     LOG_DEBUG("Connect to SSL server success\n");
-    return 0;
+    return KHTTP_ERR_OK;
+}
+
+int khttp_ssl_skip_auth(khttp_ctx *ctx)
+{
+    ctx->pass_serv_auth = 1;
+    return KHTTP_ERR_OK;
+}
+
+int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw)
+{
+    if(ctx == NULL || cert == NULL || key == NULL) return -KHTTP_ERR_PARAM;
+    strncpy(ctx->cert_path, cert, KHTTP_PATH_LEN);
+    strncpy(ctx->key_path, key, KHTTP_PATH_LEN);
+    if(pw) strncpy(ctx->key_pass, pw, KHTTP_PASS_LEN);
+    return KHTTP_ERR_OK;
 }
 
 int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, int auth_type)
@@ -633,7 +743,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
         if(ctx->auth_type == KHTTP_AUTH_BASIC){
             len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
             size_t base64_len;
-            char *base64 = base64_encode(resp_str, len, &base64_len);
+            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
             len = snprintf(req, 1024, "GET %s HTTP/1.1\r\n"
                 "Authorization: Basic %s\r\n"
@@ -683,7 +793,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
         //TODO add random rule generate cnonce 
         khttp_md5sum(cnonce, strlen(cnonce), cnonce);
         size_t cnonce_b64_len;
-        cnonce_b64 = base64_encode(cnonce, 32, &cnonce_b64_len);
+        cnonce_b64 = khttp_base64_encode(cnonce, 32, &cnonce_b64_len);
         //response
         if(strcmp(ctx->qop, "auth") == 0){
             //FIXME dynamic generate nonceCount "00000001"
@@ -696,7 +806,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
     }else if(ctx->auth_type == KHTTP_AUTH_BASIC){
         len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
         size_t cnonce_b64_len;
-        cnonce_b64 = base64_encode(resp_str, len, &cnonce_b64_len);
+        cnonce_b64 = khttp_base64_encode(resp_str, len, &cnonce_b64_len);
     }
     if(!req) return -KHTTP_ERR_OOM;
     if(ctx->method == KHTTP_GET) {
@@ -817,7 +927,7 @@ int khttp_perform(khttp_ctx *ctx)
         ret = -KHTTP_ERR_SOCK;
     }
     if(connect(ctx->fd, result->ai_addr, result->ai_addrlen)!= 0) {
-        if(errno == 115){
+        if(errno == -EINPROGRESS){
             //sleep(1);
         }else{
            LOG_ERROR("khttp connect to server error %d(%s)\n", errno, strerror(errno));
@@ -825,8 +935,15 @@ int khttp_perform(khttp_ctx *ctx)
            goto err;
         }
     }
-    freeaddrinfo(result);
     LOG_DEBUG("khttp connect to server successfully\n");
+    freeaddrinfo(result);
+    if(ctx->proto == KHTTP_HTTPS){
+        if(khttp_ssl_setup(ctx) != KHTTP_ERR_OK){
+            LOG_ERROR("khttp ssl setup failure\n");
+            return -KHTTP_ERR_SSL;
+        }
+        LOG_DEBUG("khttp setup ssl connection successfully\n");
+    }
     int count = 0;
     for(;;)
     {

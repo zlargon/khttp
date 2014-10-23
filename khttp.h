@@ -27,6 +27,8 @@
 #define KHTTP_PASS_LEN      128
 #define KHTTP_USER_LEN      128
 
+#define KHTTP_SSL_DATA_LEN  256
+
 #define KHTTP_NONCE_LEN     64
 #define KHTTP_QOP_LEN       64
 #define KHTTP_REALM_LEN     64
@@ -74,6 +76,7 @@ enum{
     KHTTP_ERR_RECV,
     KHTTP_ERR_PARAM,
     KHTTP_ERR_CONNECT,
+    KHTTP_ERR_DISCONN,
     KHTTP_ERR_NO_FD,
     KHTTP_ERR_UNKNOWN
 };
