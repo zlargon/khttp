@@ -657,11 +657,8 @@ int khttp_ssl_setup(khttp_ctx *ctx)
         return -KHTTP_ERR_SSL;
     }
     // try SSLv3
-    if( (ctx->ssl_ctx = SSL_CTX_new(SSLv3_method())) == NULL) {
-        // try TLSv1
-        if( (ctx->ssl_ctx = SSL_CTX_new(SSLv3_method())) == NULL ) {
-            return -KHTTP_ERR_SSL;
-        }
+    if( (ctx->ssl_ctx = SSL_CTX_new(SSLv23_client_method())) == NULL) {
+        return -KHTTP_ERR_SSL;
     }
     // Pass server auth
     if(ctx->pass_serv_auth){
@@ -693,8 +690,28 @@ int khttp_ssl_setup(khttp_ctx *ctx)
         return -KHTTP_ERR_SSL;
     }
     if((ret = SSL_connect(ctx->ssl)) != 1) {
-        ret = SSL_get_error(ctx->ssl, ret);
+        char error_buffer[256];
         LOG_ERROR("SSL_connect failure %d\n", ret);
+        ret = SSL_get_error(ctx->ssl, ret);
+        if(SSL_ERROR_WANT_READ == ret){
+            return KHTTP_ERR_OK;
+        }else if(SSL_ERROR_WANT_WRITE == ret) {
+            return KHTTP_ERR_OK;
+        }
+        switch(ret){
+            case 0x1470E086:
+            case 0x14090086:
+                ret = SSL_get_verify_result(ctx->ssl);
+                if(ret != X509_V_OK){
+                    snprintf(error_buffer, sizeof(error_buffer),
+                            "SSL certificate problem: %s",
+                            X509_verify_cert_error_string(ret));
+                }
+            default:
+                ERR_error_string_n(ret, error_buffer, sizeof(error_buffer));
+                break;
+        }
+        LOG_ERROR("SSL_get_error failure %d %s\n", ret, error_buffer);
         return -KHTTP_ERR_SSL;//TODO
     }
     LOG_DEBUG("Connect to SSL server success\n");
@@ -748,17 +765,17 @@ int khttp_send_http_req(khttp_ctx *ctx)
             len = snprintf(req, 1024, "GET %s HTTP/1.1\r\n"
                 "Authorization: Basic %s\r\n"
                 "User-Agent: %s\r\n"
-                "Host: %s:%d\r\n"
+                "Host: %s\r\n"
                 "Accept: */*\r\n"
-                "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, ctx->port);
+                "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host);
             free(base64);
             base64 = NULL;
         }else{
             len = snprintf(req, 1024, "GET %s HTTP/1.1\r\n"
                 "User-Agent: %s\r\n"
-                "Host: %s:%d\r\n"
+                "Host: %s\r\n"
                 "Accept: */*\r\n"
-                "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, ctx->port);
+                "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
         }
     }
     khttp_dump_message_flow(req, len, 0);

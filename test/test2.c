@@ -25,7 +25,7 @@ void test_content_length()
 void test_digest()
 {
     khttp_ctx *ctx = khttp_new();
-    khttp_set_uri(ctx, "http://localhost:8888/alive");
+    khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_DIGEST);
     khttp_perform(ctx);
     khttp_destroy(ctx);
@@ -34,7 +34,7 @@ void test_digest()
 void test_digest_fail()
 {
     khttp_ctx *ctx = khttp_new();
-    khttp_set_uri(ctx, "http://localhost:8888/alive");
+    khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_DIGEST);
     khttp_perform(ctx);
     khttp_destroy(ctx);
@@ -43,7 +43,7 @@ void test_digest_fail()
 void test_basic_but_digest()
 {
     khttp_ctx *ctx = khttp_new();
-    khttp_set_uri(ctx, "http://localhost:8888/alive");
+    khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_BASIC);
     khttp_perform(ctx);
     khttp_destroy(ctx);
@@ -52,7 +52,7 @@ void test_basic_but_digest()
 void test_basic_but_digest_fail()
 {
     khttp_ctx *ctx = khttp_new();
-    khttp_set_uri(ctx, "http://localhost:8888/alive");
+    khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_BASIC);
     khttp_perform(ctx);
     khttp_destroy(ctx);

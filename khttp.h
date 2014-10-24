@@ -40,7 +40,7 @@
 #define KHTTP_HTTP_PORT     80
 #define KHTTP_HTTPS_PORT    443
 
-#define KHTTP_HEADER_MAX    16
+#define KHTTP_HEADER_MAX    32
 
 #define KHTTP_ENABLE        1
 #define KHTTP_DISABLE       0
@@ -48,7 +48,7 @@
 #define KHTTP_SEND_TIMEO    10000
 #define KHTTP_RECV_TIMEO    10000
 
-#define KHTTP_SSL_DEPTH     1
+#define KHTTP_SSL_DEPTH     3
 #define KHTTP_NETWORK_BUF   1500
 
 
