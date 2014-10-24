@@ -13,7 +13,6 @@ var dotenv = require('dotenv');
 var bodyparser = require('body-parser');
 var methodoverride = require('method-override');
 var path = require('path');
-var AWS = require('aws-sdk');
 var multipart = require('connect-multiparty');
 var multipartMiddleware = multipart();
 
