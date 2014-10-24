@@ -165,7 +165,7 @@ var register = function(app){
           ,function(req, res){
     //var subject = req.connection.getPeerCertificate().subject;
     //res.status(200).end(JSON.stringify(subject));
-    res.status(200).end();
+    res.status(200).end(JSON.stringify(req.body));
   });
   app.post('/pbasic'
           ,passport.authenticate('basic', { session: false })

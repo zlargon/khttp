@@ -27,6 +27,7 @@
 #define KHTTP_PASS_LEN      128
 #define KHTTP_USER_LEN      128
 
+#define KHTTP_REQ_SIZE      2048
 #define KHTTP_SSL_DATA_LEN  256
 
 #define KHTTP_NONCE_LEN     64

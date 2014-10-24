@@ -783,10 +783,10 @@ int khttp_send_http_req(khttp_ctx *ctx)
 {
     char resp_str[KHTTP_RESP_LEN];
     //FIXME change to dynamic size
-    char *req = malloc(1024);
+    char *req = malloc(KHTTP_REQ_SIZE);
     if(!req) return -KHTTP_ERR_OOM;
 
-    memset(req, 0, 1024);
+    memset(req, 0, KHTTP_REQ_SIZE);
     int len = 0;
     if(ctx->method == KHTTP_GET) {
         if(ctx->auth_type == KHTTP_AUTH_BASIC){
@@ -794,7 +794,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
             size_t base64_len;
             char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
-            len = snprintf(req, 1024, "GET %s HTTP/1.1\r\n"
+            len = snprintf(req, KHTTP_REQ_SIZE, "GET %s HTTP/1.1\r\n"
                 "Authorization: Basic %s\r\n"
                 "User-Agent: %s\r\n"
                 "Host: %s\r\n"
@@ -803,7 +803,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
             free(base64);
             base64 = NULL;
         }else{
-            len = snprintf(req, 1024, "GET %s HTTP/1.1\r\n"
+            len = snprintf(req, KHTTP_REQ_SIZE, "GET %s HTTP/1.1\r\n"
                 "User-Agent: %s\r\n"
                 "Host: %s\r\n"
                 "Accept: */*\r\n"
@@ -815,7 +815,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
             size_t base64_len;
             char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
-            len = snprintf(req, 1024, "POST %s HTTP/1.1\r\n"
+            len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
                 "Authorization: Basic %s\r\n"
                 "User-Agent: %s\r\n"
                 "Host: %s\r\n"
@@ -824,7 +824,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
             free(base64);
             base64 = NULL;
         }else{
-            len = snprintf(req, 1024, "POST %s HTTP/1.1\r\n"
+            len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
                 "User-Agent: %s\r\n"
                 "Host: %s\r\n"
                 "Accept: */*\r\n"
@@ -847,7 +847,8 @@ int khttp_send_http_auth(khttp_ctx *ctx)
     char resp_str[KHTTP_RESP_LEN];
     char response[KHTTP_NONCE_LEN];
     char cnonce[KHTTP_CNONCE_LEN];
-    char *req = malloc(2048);
+    char *req = malloc(KHTTP_REQ_SIZE);
+    if(!req) return -KHTTP_ERR_OOM;
     char *cnonce_b64 = NULL;
     char path[KHTTP_PATH_LEN + 8];
     int len = 0;
@@ -879,10 +880,9 @@ int khttp_send_http_auth(khttp_ctx *ctx)
         size_t cnonce_b64_len;
         cnonce_b64 = khttp_base64_encode(resp_str, len, &cnonce_b64_len);
     }
-    if(!req) return -KHTTP_ERR_OOM;
     if(ctx->method == KHTTP_GET) {
         if(ctx->auth_type == KHTTP_AUTH_DIGEST){//Digest auth
-            len = snprintf(req, 2048,
+            len = snprintf(req, KHTTP_REQ_SIZE,
                 "GET %s HTTP/1.1\r\n"
                 "Authorization: %s username=\"%s\", realm=\"%s\", "
                 "nonce=\"%s\", uri=\"%s\", "
@@ -900,7 +900,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                 ctx->host, ctx->port
                 );
         }else{//Basic auth
-            len = snprintf(req, 2048,
+            len = snprintf(req, KHTTP_REQ_SIZE,
                 "GET %s HTTP/1.1\r\n"
                 "Authorization: %s %s\r\n"
                 "User-Agent: %s\r\n"
@@ -914,7 +914,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
         }
     }else if(ctx->method == KHTTP_POST){
         if(ctx->auth_type == KHTTP_AUTH_DIGEST){//Digest auth
-            len = snprintf(req, 2048,
+            len = snprintf(req, KHTTP_REQ_SIZE,
                 "POST %s HTTP/1.1\r\n"
                 "Authorization: %s username=\"%s\", realm=\"%s\", "
                 "nonce=\"%s\", uri=\"%s\", "
@@ -932,7 +932,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                 ctx->host, ctx->port
                 );
         }else{//Basic auth
-            len = snprintf(req, 2048,
+            len = snprintf(req, KHTTP_REQ_SIZE,
                 "POST %s HTTP/1.1\r\n"
                 "Authorization: %s %s\r\n"
                 "User-Agent: %s\r\n"

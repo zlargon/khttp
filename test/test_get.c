@@ -87,7 +87,4 @@ int main()
         test_basic_but_digest();
         test_basic_but_digest_fail();
     //}
-    while(1){
-        sleep(1);
-    }
 }
