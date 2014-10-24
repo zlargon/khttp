@@ -809,6 +809,28 @@ int khttp_send_http_req(khttp_ctx *ctx)
                 "Accept: */*\r\n"
                 "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
         }
+    }else if(ctx->method == KHTTP_POST){
+        if(ctx->auth_type == KHTTP_AUTH_BASIC){
+            len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
+            size_t base64_len;
+            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
+            if(!base64) return -KHTTP_ERR_OOM;
+            len = snprintf(req, 1024, "POST %s HTTP/1.1\r\n"
+                "Authorization: Basic %s\r\n"
+                "User-Agent: %s\r\n"
+                "Host: %s\r\n"
+                "Accept: */*\r\n"
+                "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host);
+            free(base64);
+            base64 = NULL;
+        }else{
+            len = snprintf(req, 1024, "POST %s HTTP/1.1\r\n"
+                "User-Agent: %s\r\n"
+                "Host: %s\r\n"
+                "Accept: */*\r\n"
+                "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
+        }
+    }else{
     }
     khttp_dump_message_flow(req, len, 0);
     if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
@@ -877,10 +899,6 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                 KHTTP_USER_AGENT,
                 ctx->host, ctx->port
                 );
-            if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-                LOG_ERROR("khttp request send failure\n");
-            }
-            LOG_DEBUG("%s\n", req);
         }else{//Basic auth
             len = snprintf(req, 2048,
                 "GET %s HTTP/1.1\r\n"
@@ -893,11 +911,43 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                 KHTTP_USER_AGENT,
                 ctx->host, ctx->port
                 );
-            if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-                LOG_ERROR("khttp request send failure\n");
-            }
-            LOG_DEBUG("%s\n", req);
         }
+    }else if(ctx->method == KHTTP_POST){
+        if(ctx->auth_type == KHTTP_AUTH_DIGEST){//Digest auth
+            len = snprintf(req, 2048,
+                "POST %s HTTP/1.1\r\n"
+                "Authorization: %s username=\"%s\", realm=\"%s\", "
+                "nonce=\"%s\", uri=\"%s\", "
+                "cnonce=\"%s\", nc=00000001, qop=%s, "
+                "response=\"%s\"\r\n"
+                "User-Agent: %s\r\n"
+                "Host: %s:%d\r\n"
+                "Accept: */*\r\n\r\n",
+                ctx->path,
+                khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
+                ctx->nonce, ctx->path,
+                cnonce_b64, ctx->qop,
+                response,
+                KHTTP_USER_AGENT,
+                ctx->host, ctx->port
+                );
+        }else{//Basic auth
+            len = snprintf(req, 2048,
+                "POST %s HTTP/1.1\r\n"
+                "Authorization: %s %s\r\n"
+                "User-Agent: %s\r\n"
+                "Host: %s:%d\r\n"
+                "Accept: */*\r\n\r\n",
+                ctx->path,
+                khttp_auth2str(ctx->auth_type), cnonce_b64,
+                KHTTP_USER_AGENT,
+                ctx->host, ctx->port
+                );
+        }
+    }else{
+    }
+    if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
+        LOG_ERROR("khttp request send failure\n");
     }
     khttp_dump_message_flow(req, len, 0);
     if(cnonce_b64) free(cnonce_b64);
