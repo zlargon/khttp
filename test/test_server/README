@@ -1,0 +1,54 @@
+
+
+# Feature:
+
+
+1. backup a configure file
+2. list the backup file
+3. download configure file
+4. delete configure file
+
+## API:
+
+
+1. Backup
+
+Method: POST
+
+URI: http://backup.securepilot.com/rest/v1/backup
+
+Parameter:
+
+
+2. List backup
+
+Method: POST
+
+URI: http://backup.securepilot.com/rest/v1/list
+
+
+3. Download
+
+Method: POST
+
+URI: http://backup.securepilot.com/rest/v1/download
+
+
+## Autoscale rule:
+
+TBD
+CPU up to 90%
+
+
+
+## Auto start:
+
+pm2 startup ubuntu
+pm2 save
+
+## Start
+
+pm2 start backup.js
+
+
+

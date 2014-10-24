@@ -1,0 +1,34 @@
+{
+  "name": "HTTP(S) test server",
+  "description": "HTTP test server",
+  "version": "0.0.1",
+  "author": {
+    "name": "Kaija Chang",
+    "email": "kaija.chang@gmail.com"
+  },
+  "contributors": [
+    {
+      "name": "Kaija Chang",
+      "email": "kaija.chang@gmail.com"
+    }
+  ],
+  "dependencies": {
+    "dotenv": "*",
+    "express": "*",
+    "ejs": "*",
+    "body-parser": "*",
+    "method-override": "*",
+    "winston": "*",
+    "passport-http": "*",
+    "passport": "*",
+    "connect-multiparty": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kaija/khttp"
+  },
+  "main": "server.js",
+  "engines": {
+    "node": "*"
+  }
+}

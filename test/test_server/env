@@ -1,0 +1,9 @@
+couchbase_server=localhost
+couchbase_username=Administrator
+couchbase_password=qwertyuiop
+couchbase_bucket=backup
+aws_s3_access_key=access-key
+aws_s3_secret_access_key=secret-access-key
+aws_s3_bucket=conf_backup
+aws_s3_region=ap-southeast-1
+api_port=443
