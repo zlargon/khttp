@@ -1,5 +1,5 @@
 {
-  "name": "HTTP(S) test server",
+  "name": "HTTP-test-server",
   "description": "HTTP test server",
   "version": "0.0.1",
   "author": {
