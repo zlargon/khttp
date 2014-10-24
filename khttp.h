@@ -88,6 +88,14 @@ enum{
 };
 
 enum{
+    KHTTP_METHOD_SSLV2_3,
+    KHTTP_METHOD_SSLV3,
+    KHTTP_METHOD_TLSV1,
+    KHTTP_METHOD_TLSV1_1,
+    KHTTP_METHOD_TLSV1_2
+};
+
+enum{
     KHTTP_HTTP,
     KHTTP_HTTPS
 };
@@ -110,6 +118,7 @@ typedef struct khttp_ctx {
     int                 port;
     // Authentication
     int                 auth_type;
+    int                 ssl_method;
     int                 pass_serv_auth;
     char                cert_path[KHTTP_PATH_LEN];
     char                key_path[KHTTP_PATH_LEN];

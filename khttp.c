@@ -656,9 +656,33 @@ int khttp_ssl_setup(khttp_ctx *ctx)
         LOG_ERROR("SSL library init failure\n");
         return -KHTTP_ERR_SSL;
     }
-    // try SSLv3
-    if( (ctx->ssl_ctx = SSL_CTX_new(SSLv23_client_method())) == NULL) {
-        return -KHTTP_ERR_SSL;
+    if(ctx->ssl_method == KHTTP_METHOD_SSLV2_3){
+        if( (ctx->ssl_ctx = SSL_CTX_new(SSLv23_client_method())) == NULL) {
+            LOG_ERROR("SSL setup request method SSLv23 failure\n");
+            return -KHTTP_ERR_SSL;
+        }
+    }else if(ctx->ssl_method == KHTTP_METHOD_SSLV3){
+        if( (ctx->ssl_ctx = SSL_CTX_new(SSLv3_client_method())) == NULL) {
+            LOG_ERROR("SSL setup request method SSLv3 failure\n");
+            return -KHTTP_ERR_SSL;
+        }
+    }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1){
+        if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_client_method())) == NULL) {
+            LOG_ERROR("SSL setup request method TLSv1 failure\n");
+            return -KHTTP_ERR_SSL;
+        }
+    }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1_1){
+        if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_1_client_method())) == NULL) {
+            LOG_ERROR("SSL setup request method TLSv1_1 failure\n");
+            return -KHTTP_ERR_SSL;
+        }
+    }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1_2){
+        if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_2_client_method())) == NULL) {
+            LOG_ERROR("SSL setup request method TLSv1_2 failure\n");
+            return -KHTTP_ERR_SSL;
+        }
+    }else{
+        //Not going happen
     }
     // Pass server auth
     if(ctx->pass_serv_auth){
@@ -715,6 +739,14 @@ int khttp_ssl_setup(khttp_ctx *ctx)
         return -KHTTP_ERR_SSL;//TODO
     }
     LOG_DEBUG("Connect to SSL server success\n");
+    return KHTTP_ERR_OK;
+}
+
+int khttp_ssl_set_method(khttp_ctx *ctx, int method)
+{
+    if(method >= KHTTP_METHOD_SSLV2_3 && method <= KHTTP_METHOD_TLSV1_2){
+        ctx->ssl_method = method;
+    }
     return KHTTP_ERR_OK;
 }
 
