@@ -165,6 +165,7 @@ int khttp_header_field_cb (http_parser *p, const char *buf, size_t len)
     khttp_ctx *ctx = p->data;
     if(ctx->done == 1){
         char *tmp = malloc(len + 1);
+        if(!tmp) return -KHTTP_ERR_OOM;
         tmp[len] = 0;
         ctx->header_field[ctx->header_count] = tmp;
         memcpy(tmp, buf, len);
@@ -179,6 +180,7 @@ int khttp_header_value_cb (http_parser *p, const char *buf, size_t len)
     khttp_ctx *ctx = p->data;
     if(ctx->done == 1){
         char *tmp = malloc(len + 1);
+        if(!tmp) return -KHTTP_ERR_OOM;
         tmp[len] = 0;
         ctx->header_value[ctx->header_count] = tmp;
         memcpy(tmp, buf, len);
@@ -300,6 +302,7 @@ khttp_ctx *khttp_new()
     khttp_ctx *ctx = malloc(sizeof(khttp_ctx));
     if(!ctx){
         LOG_ERROR("khttp context create failure out of memory\n");
+        return NULL;
     }
     memset(ctx, 0, sizeof(khttp_ctx));
     return ctx;
@@ -997,6 +1000,9 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
     http_parser_init(&ctx->hp, HTTP_RESPONSE);
     // Malloc memory for body
     ctx->body = malloc(ctx->body_len + 1);
+    if(!ctx->body){
+        return -KHTTP_ERR_OOM;
+    }
     //LOG_DEBUG("malloc %zu byte for body\n", ctx->body_len);
     memset(ctx->body, 0, ctx->body_len + 1);
     //Set body length to 0 before parse
@@ -1084,6 +1090,7 @@ int khttp_perform(khttp_ctx *ctx)
         khttp_free_body(ctx);
         if((res = khttp_recv_http_resp(ctx)) != 0){
             LOG_ERROR("khttp recv HTTP response failure %d\n", res);
+            ret = res;
             goto err;
         }
         LOG_DEBUG("receive HTTP response success\n");
