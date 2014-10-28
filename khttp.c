@@ -201,7 +201,7 @@ void khttp_dump_header(khttp_ctx *ctx)
 
 char *khttp_find_header(khttp_ctx *ctx, const char *header)
 {
-    if(!ctx) return;
+    if(!ctx) return NULL;
     int i = 0;
     for(i = 0; i < ctx->header_count ; i++){
         if(strncmp(header, ctx->header_field[i], strlen(header)) == 0) {
@@ -695,6 +695,7 @@ int khttp_ssl_setup(khttp_ctx *ctx)
             LOG_ERROR("SSL setup request method TLSv1 failure\n");
             return -KHTTP_ERR_SSL;
         }
+#ifndef __MAC__
     }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1_1){
         if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_1_client_method())) == NULL) {
             LOG_ERROR("SSL setup request method TLSv1_1 failure\n");
@@ -705,6 +706,7 @@ int khttp_ssl_setup(khttp_ctx *ctx)
             LOG_ERROR("SSL setup request method TLSv1_2 failure\n");
             return -KHTTP_ERR_SSL;
         }
+#endif
     }else{
         //Not going happen
     }
