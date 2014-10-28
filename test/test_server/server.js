@@ -166,12 +166,24 @@ var register = function(app){
           ,function(req, res){
     //var subject = req.connection.getPeerCertificate().subject;
     //res.status(200).end(JSON.stringify(subject));
-    res.status(200).end(JSON.stringify(req.body));
+    if(req.body){
+        res.status(200).end(JSON.stringify(req.body));
+    }else{
+        res.status(200).end("OK");
+    }
   });
   app.post('/pbasic'
           ,passport.authenticate('basic', { session: false })
           ,function(req, res){
-    res.status(200).end("OK");
+    if(req.body){
+        res.status(200).end(JSON.stringify(req.body));
+    }else{
+        res.status(200).end("OK");
+    }
+  });
+  app.post('/post'
+          ,function(req, res){
+    res.status(200).end(JSON.stringify(req.body));
   });
 };
 

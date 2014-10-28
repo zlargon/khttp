@@ -327,6 +327,14 @@ void khttp_destroy(khttp_ctx *ctx)
         free(ctx->body);
         ctx->body = NULL;
     }
+    if(ctx->data) {
+        free(ctx->data);
+        ctx->data = NULL;
+    }
+    if(ctx->form) {
+        free(ctx->form);
+        ctx->form = NULL;
+    }
     if(ctx){
         free(ctx);
     }
@@ -795,6 +803,18 @@ int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, 
     return KHTTP_ERR_OK;
 }
 
+int khttp_set_post_data(khttp_ctx *ctx, char *data)
+{
+    if(ctx == NULL || data == NULL) return -KHTTP_ERR_PARAM;
+    if(ctx->data) free(ctx->data);
+    //Malloc memory from data string length. Should be protect?
+    ctx->data = malloc(strlen(data) + 1);
+    if(!ctx->data) -KHTTP_ERR_OOM;
+    //Copy from data
+    strcpy(ctx->data, data);
+    return KHTTP_ERR_OK;
+}
+
 int khttp_send_http_req(khttp_ctx *ctx)
 {
     char resp_str[KHTTP_RESP_LEN];
@@ -816,6 +836,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                 "Host: %s\r\n"
                 "Accept: */*\r\n"
                 "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host);
+            //TODO add len > KHTTP_REQ_SIZE handle
             free(base64);
             base64 = NULL;
         }else{
@@ -831,26 +852,57 @@ int khttp_send_http_req(khttp_ctx *ctx)
             size_t base64_len;
             char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
-            len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
-                "Authorization: Basic %s\r\n"
-                "User-Agent: %s\r\n"
-                "Host: %s\r\n"
-                "Accept: */*\r\n"
-                "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host);
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host);
+                //TODO add len > KHTTP_REQ_SIZE handle
+            }
             free(base64);
             base64 = NULL;
         }else{
-            len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
-                "User-Agent: %s\r\n"
-                "Host: %s\r\n"
-                "Accept: */*\r\n"
-                "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
+            }
         }
     }else{
+        //TODO add DELETE and UPDATE?
     }
-    khttp_dump_message_flow(req, len, 0);
-    if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-        LOG_ERROR("khttp request send failure\n");
+    if(req){
+        khttp_dump_message_flow(req, len, 0);
+        if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
+            LOG_ERROR("khttp request send failure\n");
+        }
+    }
+    if(ctx->data){
+        khttp_dump_message_flow(ctx->data, len, 0);
+        if(ctx->send(ctx, ctx->data, strlen(ctx->data), KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
+            LOG_ERROR("khttp request send failure\n");
+        }
     }
     free(req);
     return 0;
@@ -930,42 +982,91 @@ int khttp_send_http_auth(khttp_ctx *ctx)
         }
     }else if(ctx->method == KHTTP_POST){
         if(ctx->auth_type == KHTTP_AUTH_DIGEST){//Digest auth
-            len = snprintf(req, KHTTP_REQ_SIZE,
-                "POST %s HTTP/1.1\r\n"
-                "Authorization: %s username=\"%s\", realm=\"%s\", "
-                "nonce=\"%s\", uri=\"%s\", "
-                "cnonce=\"%s\", nc=00000001, qop=%s, "
-                "response=\"%s\"\r\n"
-                "User-Agent: %s\r\n"
-                "Host: %s:%d\r\n"
-                "Accept: */*\r\n\r\n",
-                ctx->path,
-                khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
-                ctx->nonce, ctx->path,
-                cnonce_b64, ctx->qop,
-                response,
-                KHTTP_USER_AGENT,
-                ctx->host, ctx->port
-                );
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "POST %s HTTP/1.1\r\n"
+                    "Authorization: %s username=\"%s\", realm=\"%s\", "
+                    "nonce=\"%s\", uri=\"%s\", "
+                    "cnonce=\"%s\", nc=00000001, qop=%s, "
+                    "response=\"%s\"\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
+                    ctx->nonce, ctx->path,
+                    cnonce_b64, ctx->qop,
+                    response,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port,
+                    strlen(ctx->data)
+                    );
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "POST %s HTTP/1.1\r\n"
+                    "Authorization: %s username=\"%s\", realm=\"%s\", "
+                    "nonce=\"%s\", uri=\"%s\", "
+                    "cnonce=\"%s\", nc=00000001, qop=%s, "
+                    "response=\"%s\"\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
+                    ctx->nonce, ctx->path,
+                    cnonce_b64, ctx->qop,
+                    response,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port
+                    );
+            }
         }else{//Basic auth
-            len = snprintf(req, KHTTP_REQ_SIZE,
-                "POST %s HTTP/1.1\r\n"
-                "Authorization: %s %s\r\n"
-                "User-Agent: %s\r\n"
-                "Host: %s:%d\r\n"
-                "Accept: */*\r\n\r\n",
-                ctx->path,
-                khttp_auth2str(ctx->auth_type), cnonce_b64,
-                KHTTP_USER_AGENT,
-                ctx->host, ctx->port
-                );
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "POST %s HTTP/1.1\r\n"
+                    "Authorization: %s %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), cnonce_b64,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port,
+                    strlen(ctx->data)
+                    );
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "POST %s HTTP/1.1\r\n"
+                    "Authorization: %s %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), cnonce_b64,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port
+                    );
+            }
         }
     }else{
     }
+    khttp_dump_message_flow(req, len, 0);
     if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
         LOG_ERROR("khttp request send failure\n");
     }
-    khttp_dump_message_flow(req, len, 0);
+    if(ctx->data){
+        khttp_dump_message_flow(ctx->data, len, 0);
+        if(ctx->send(ctx, ctx->data, strlen(ctx->data), KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
+            LOG_ERROR("khttp request send failure\n");
+        }
+    }
     if(cnonce_b64) free(cnonce_b64);
     if(req) free(req);
     return 0;

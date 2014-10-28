@@ -135,6 +135,8 @@ typedef struct khttp_ctx {
     size_t              body_len;
     void                *body;
     int                 done;
+    char                *data;
+    char                *form;
     http_parser         hp;
 #ifdef OPENSSL
     BIO                 *bio;
@@ -156,4 +158,5 @@ int khttp_ssl_set_method(khttp_ctx *ctx, int method);
 int khttp_ssl_skip_auth(khttp_ctx *ctx);
 int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw);
 int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, int auth_type);
+int khttp_set_post_data(khttp_ctx *ctx, char *data);
 #endif
