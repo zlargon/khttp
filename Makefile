@@ -5,6 +5,7 @@ LIB_PREFIX=libkhttp
 OBJS=http_parser.o log.o khttp.o
 
 CFLAGS=-fPIC -O2 -g -Werror -DCOLOR_LOG -DOPENSSL
+#CFLAGS=-fPIC -O2 -g -Werror -DCOLOR_LOG
 LDFLAGS=-lssl -lcrypto
 
 all: shared static test

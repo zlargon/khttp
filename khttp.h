@@ -79,6 +79,7 @@ enum{
     KHTTP_ERR_CONNECT,
     KHTTP_ERR_DISCONN,
     KHTTP_ERR_NO_FD,
+    KHTTP_ERR_NOT_SUPP,
     KHTTP_ERR_UNKNOWN
 };
 
@@ -148,4 +149,11 @@ typedef struct khttp_ctx {
 
 khttp_ctx *khttp_new();
 void khttp_destroy(khttp_ctx *ctx);
+int khttp_perform(khttp_ctx *ctx);
+int khttp_set_method(khttp_ctx *ctx, int method);
+int khttp_set_uri(khttp_ctx *ctx, char *uri);
+int khttp_ssl_set_method(khttp_ctx *ctx, int method);
+int khttp_ssl_skip_auth(khttp_ctx *ctx);
+int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw);
+int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, int auth_type);
 #endif

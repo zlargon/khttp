@@ -23,7 +23,7 @@ struct {
     {"Digest"},
     {"Basic"}
 };
-static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+static char base64_encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
                                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
                                 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
@@ -31,19 +31,22 @@ static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
                                 'w', 'x', 'y', 'z', '0', '1', '2', '3',
                                 '4', '5', '6', '7', '8', '9', '+', '/'};
-static char *decoding_table = NULL;
+static char *base64_decoding_table = NULL;
 static int mod_table[] = {0, 2, 1};
 
 void build_decoding_table() {
-    if(decoding_table != NULL) return;
-    decoding_table = malloc(256);
+    if(base64_decoding_table != NULL) return;
+    base64_decoding_table = malloc(256);
     int i;
     for (i = 0; i < 64; i++)
-        decoding_table[(unsigned char) encoding_table[i]] = i;
+        base64_decoding_table[(unsigned char) base64_encoding_table[i]] = i;
 }
 
 void base64_cleanup() {
-    free(decoding_table);
+    if(base64_decoding_table){
+        free(base64_decoding_table);
+        base64_decoding_table = NULL;
+    }
 }
 
 char *khttp_base64_encode(const unsigned char *data,
@@ -64,10 +67,10 @@ char *khttp_base64_encode(const unsigned char *data,
 
         uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
 
-        encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
-        encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
-        encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
-        encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
+        encoded_data[j++] = base64_encoding_table[(triple >> 3 * 6) & 0x3F];
+        encoded_data[j++] = base64_encoding_table[(triple >> 2 * 6) & 0x3F];
+        encoded_data[j++] = base64_encoding_table[(triple >> 1 * 6) & 0x3F];
+        encoded_data[j++] = base64_encoding_table[(triple >> 0 * 6) & 0x3F];
     }
 
     for (i = 0; i < mod_table[input_length % 3]; i++)
@@ -78,7 +81,7 @@ char *khttp_base64_encode(const unsigned char *data,
 char *khttp_base64_decode(const char *data,
                     size_t input_length,
                     size_t *output_length) {
-    if (decoding_table == NULL) build_decoding_table();
+    if (base64_decoding_table == NULL) build_decoding_table();
     unsigned char *ptr = (unsigned char *)data;
     if (input_length % 4 != 0) return NULL;
 
@@ -92,10 +95,10 @@ char *khttp_base64_decode(const char *data,
     int i,j;
     for (i = 0, j = 0; i < input_length;) {
 
-        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[ptr[i++]];
-        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[ptr[i++]];
-        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[ptr[i++]];
-        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[ptr[i++]];
+        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
+        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
+        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
+        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
 
         uint32_t triple = (sextet_a << 3 * 6)
         + (sextet_b << 2 * 6)
@@ -307,6 +310,7 @@ void khttp_destroy(khttp_ctx *ctx)
     if(!ctx) return;
     khttp_free_header(ctx);
     khttp_free_body(ctx);
+#ifdef OPENSSL
     if(ctx->ssl){
         SSL_set_shutdown(ctx->ssl, 2);
         SSL_shutdown(ctx->ssl);
@@ -314,6 +318,7 @@ void khttp_destroy(khttp_ctx *ctx)
         ctx->ssl = NULL;
         if(ctx->ssl_ctx) SSL_CTX_free(ctx->ssl_ctx);
     }
+#endif
     if(ctx->fd > 0) close(ctx->fd);
     if(ctx->body) {
         free(ctx->body);
@@ -385,6 +390,7 @@ int http_socket_recvtimeout(int fd, int timeout)
 int khttp_md5sum(char *input, int len, char *out)
 {
     int ret = 0, i = 0;
+#ifdef OPENSSL
     MD5_CTX ctx;
     char buf[3] = {'\0'};
     unsigned char md5[MD5_DIGEST_LENGTH];
@@ -399,6 +405,9 @@ int khttp_md5sum(char *input, int len, char *out)
         sprintf(buf, "%02x", md5[i]);
         strcat(out, buf);
     }
+#else
+//#error "FIXME NO OPENSSL"
+#endif
     //LOG_DEBUG("MD5:[%s]\n", out);
     return ret;
 }
@@ -474,7 +483,7 @@ int http_send(khttp_ctx *ctx, void *buf, int len, int timeout)
     }while(sent < len);
     return KHTTP_ERR_OK;
 }
-
+#ifdef OPENSSL
 int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
     int sent = 0;
@@ -509,7 +518,7 @@ int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
     LOG_DEBUG("send https success\n%s\n", (char *)buf);
     return ret;
 }
-
+#endif
 int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
     int ret = KHTTP_ERR_OK;
@@ -535,7 +544,7 @@ int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
     }
     return ret;
 }
-
+#ifdef OPENSSL
 int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
     if(ctx == NULL || buf == NULL || len <= 0) return -KHTTP_ERR_PARAM;
@@ -579,7 +588,7 @@ int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
 end:
     return ret;
 }
-
+#endif
 int khttp_set_uri(khttp_ctx *ctx, char *uri)
 {
     char *head = uri;
@@ -593,8 +602,12 @@ int khttp_set_uri(khttp_ctx *ctx, char *uri)
     if(strncasecmp(uri, "https://", 8) == 0) {
         ctx->proto = KHTTP_HTTPS;
         host = head + 8;
+#ifdef OPENSSL
         ctx->send = https_send;
         ctx->recv = https_recv;
+#else
+//#error "FIXME NO OPENSSL"
+#endif
     } else if(strncasecmp(uri, "http://", 7) == 0) {
         ctx->proto = KHTTP_HTTP;
         host = head + 7;
@@ -626,7 +639,7 @@ int khttp_set_uri(khttp_ctx *ctx, char *uri)
     khttp_copy_host(host, ctx->host);
     return KHTTP_ERR_OK;
 }
-
+#ifdef OPENSSL
 static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store)
 {
     int depth, err;
@@ -764,7 +777,7 @@ int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw)
     if(pw) strncpy(ctx->key_pass, pw, KHTTP_PASS_LEN);
     return KHTTP_ERR_OK;
 }
-
+#endif
 int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, int auth_type)
 {
     if(ctx == NULL || username == NULL || password == NULL) return -KHTTP_ERR_PARAM;
@@ -1037,11 +1050,15 @@ int khttp_perform(khttp_ctx *ctx)
     LOG_DEBUG("khttp connect to server successfully\n");
     freeaddrinfo(result);
     if(ctx->proto == KHTTP_HTTPS){
+#ifdef OPENSSL
         if(khttp_ssl_setup(ctx) != KHTTP_ERR_OK){
             LOG_ERROR("khttp ssl setup failure\n");
             return -KHTTP_ERR_SSL;
         }
         LOG_DEBUG("khttp setup ssl connection successfully\n");
+#else
+        return -KHTTP_ERR_NOT_SUPP;
+#endif
     }
     int count = 0;
     for(;;)

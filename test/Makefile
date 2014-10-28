@@ -1,5 +1,5 @@
 
-CFLAGS= -I. -I../
+CFLAGS= -I. -I../ -Werror
 LDFLAGS= ../libkhttp.a -lssl -lcrypto
 
 .PHONY: test1 test_get test_post test_ssl

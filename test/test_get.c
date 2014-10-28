@@ -1,13 +1,8 @@
 #include "khttp.h"
 #include "log.h"
-#define a() aa(__func__, __LINE__)
-
-void aa(const char *func, int line)
-{
-    printf("who call me %s:%d\n", func, line);
-}
 void test_chunked_encode()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://www.inside.com.tw");
     khttp_perform(ctx);
@@ -16,6 +11,7 @@ void test_chunked_encode()
 
 void test_content_length()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://www.inside.com.tw");
     khttp_perform(ctx);
@@ -24,6 +20,7 @@ void test_content_length()
 
 void test_digest()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_DIGEST);
@@ -33,6 +30,7 @@ void test_digest()
 
 void test_digest_fail()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_DIGEST);
@@ -42,6 +40,7 @@ void test_digest_fail()
 
 void test_basic_but_digest()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_BASIC);
@@ -51,6 +50,7 @@ void test_basic_but_digest()
 
 void test_basic_but_digest_fail()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_BASIC);
@@ -60,6 +60,7 @@ void test_basic_but_digest_fail()
 
 void test_basic_fail()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://localhost:8888/basic");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_BASIC);
@@ -68,6 +69,7 @@ void test_basic_fail()
 }
 void test_basic()
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",__func__);
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://localhost:8888/basic");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_BASIC);

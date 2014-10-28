@@ -152,8 +152,9 @@ var register = function(app){
   app.get('/digest'
           ,passport.authenticate('digest', { session: false })
           ,function(req, res){
-    var subject = req.connection.getPeerCertificate().subject;
-    res.status(200).end(JSON.stringify(subject));
+    //var subject = req.connection.getPeerCertificate().subject;
+    //res.status(200).end(JSON.stringify(subject));
+    res.status(200).end("OK");
   });
   app.get('/basic'
           ,passport.authenticate('basic', { session: false })
