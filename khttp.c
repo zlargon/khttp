@@ -12,7 +12,7 @@ struct {
 }method_type[]={
     {"GET"},
     {"POST"},
-    {"UPDATE"},
+    {"PUT"},
     {"DELETE"}
 };
 
@@ -891,6 +891,92 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
             }
         }
+    }else if(ctx->method == KHTTP_PUT){
+        if(ctx->auth_type == KHTTP_AUTH_BASIC){
+            len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
+            size_t base64_len;
+            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
+            if(!base64) return -KHTTP_ERR_OOM;
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE, "PUT %s HTTP/1.1\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE, "PUT %s HTTP/1.1\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host);
+                //TODO add len > KHTTP_REQ_SIZE handle
+            }
+            free(base64);
+            base64 = NULL;
+        }else{
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE, "PUT %s HTTP/1.1\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE, "PUT %s HTTP/1.1\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
+            }
+        }
+    }else if(ctx->method == KHTTP_DELETE){
+        if(ctx->auth_type == KHTTP_AUTH_BASIC){
+            len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
+            size_t base64_len;
+            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
+            if(!base64) return -KHTTP_ERR_OOM;
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE, "DELETE %s HTTP/1.1\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE, "DELETE %s HTTP/1.1\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host);
+                //TODO add len > KHTTP_REQ_SIZE handle
+            }
+            free(base64);
+            base64 = NULL;
+        }else{
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE, "DELETE %s HTTP/1.1\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE, "DELETE %s HTTP/1.1\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host);
+            }
+        }
     }else{
         //TODO add DELETE and UPDATE?
     }
@@ -1045,6 +1131,156 @@ int khttp_send_http_auth(khttp_ctx *ctx)
             }else{
                 len = snprintf(req, KHTTP_REQ_SIZE,
                     "POST %s HTTP/1.1\r\n"
+                    "Authorization: %s %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), cnonce_b64,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port
+                    );
+            }
+        }
+    }else if(ctx->method == KHTTP_PUT){
+        if(ctx->auth_type == KHTTP_AUTH_DIGEST){//Digest auth
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "PUT %s HTTP/1.1\r\n"
+                    "Authorization: %s username=\"%s\", realm=\"%s\", "
+                    "nonce=\"%s\", uri=\"%s\", "
+                    "cnonce=\"%s\", nc=00000001, qop=%s, "
+                    "response=\"%s\"\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
+                    ctx->nonce, ctx->path,
+                    cnonce_b64, ctx->qop,
+                    response,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port,
+                    strlen(ctx->data)
+                    );
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "PUT %s HTTP/1.1\r\n"
+                    "Authorization: %s username=\"%s\", realm=\"%s\", "
+                    "nonce=\"%s\", uri=\"%s\", "
+                    "cnonce=\"%s\", nc=00000001, qop=%s, "
+                    "response=\"%s\"\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
+                    ctx->nonce, ctx->path,
+                    cnonce_b64, ctx->qop,
+                    response,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port
+                    );
+            }
+        }else{//Basic auth
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "PUT %s HTTP/1.1\r\n"
+                    "Authorization: %s %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), cnonce_b64,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port,
+                    strlen(ctx->data)
+                    );
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "PUT %s HTTP/1.1\r\n"
+                    "Authorization: %s %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), cnonce_b64,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port
+                    );
+            }
+        }
+    }else if(ctx->method == KHTTP_DELETE){
+        if(ctx->auth_type == KHTTP_AUTH_DIGEST){//Digest auth
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "DELETE %s HTTP/1.1\r\n"
+                    "Authorization: %s username=\"%s\", realm=\"%s\", "
+                    "nonce=\"%s\", uri=\"%s\", "
+                    "cnonce=\"%s\", nc=00000001, qop=%s, "
+                    "response=\"%s\"\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
+                    ctx->nonce, ctx->path,
+                    cnonce_b64, ctx->qop,
+                    response,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port,
+                    strlen(ctx->data)
+                    );
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "DELETE %s HTTP/1.1\r\n"
+                    "Authorization: %s username=\"%s\", realm=\"%s\", "
+                    "nonce=\"%s\", uri=\"%s\", "
+                    "cnonce=\"%s\", nc=00000001, qop=%s, "
+                    "response=\"%s\"\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), ctx->username, ctx->realm,
+                    ctx->nonce, ctx->path,
+                    cnonce_b64, ctx->qop,
+                    response,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port
+                    );
+            }
+        }else{//Basic auth
+            if(ctx->data){
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "DELETE %s HTTP/1.1\r\n"
+                    "Authorization: %s %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s:%d\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Content-Type: application/x-www-form-urlencoded\r\n"
+                    "\r\n",
+                    ctx->path,
+                    khttp_auth2str(ctx->auth_type), cnonce_b64,
+                    KHTTP_USER_AGENT,
+                    ctx->host, ctx->port,
+                    strlen(ctx->data)
+                    );
+            }else{
+                len = snprintf(req, KHTTP_REQ_SIZE,
+                    "DELETE %s HTTP/1.1\r\n"
                     "Authorization: %s %s\r\n"
                     "User-Agent: %s\r\n"
                     "Host: %s:%d\r\n"
@@ -1212,6 +1448,9 @@ int khttp_perform(khttp_ctx *ctx)
             case 200:
                 LOG_INFO("GOT 200 OK\n");
                 goto end;
+                break;
+            case 100:
+                LOG_INFO("GOT 100 Continue\n");
                 break;
             default:
                 goto end;

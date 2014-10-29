@@ -62,7 +62,7 @@
 enum{
     KHTTP_GET,
     KHTTP_POST,
-    KHTTP_UPDATE,
+    KHTTP_PUT,
     KHTTP_DELETE
 };
 
