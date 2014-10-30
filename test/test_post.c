@@ -94,16 +94,16 @@ void test_digest_with_data()
 
 int main()
 {
-    while(1){
+    //while(1){
         test_post_with_data();
         test_basic_with_data();
         test_digest_with_data();
-        //test_digest();
-        //test_digest_fail();
-        //test_basic();
-        //test_basic_fail();
-        //test_basic_but_digest();
-        //test_basic_but_digest_fail();
-    }
+        test_digest();
+        test_digest_fail();
+        test_basic();
+        test_basic_fail();
+        test_basic_but_digest();
+        test_basic_but_digest_fail();
+    //}
     return 0;
 }

@@ -34,6 +34,7 @@
 #define KHTTP_QOP_LEN       64
 #define KHTTP_REALM_LEN     64
 #define KHTTP_OPAQUE_LEN    64
+#define KHTTP_BOUND_LEN     32
 
 #define KHTTP_CNONCE_LEN    512
 #define KHTTP_RESP_LEN      1024
@@ -58,6 +59,10 @@
 #define KHTTP_DEBUG_SESS    1
 #define KHTTP_DEBUG_FLOW    1
 
+enum{
+    KHTTP_FORM_STRING,
+    KHTTP_FORM_FILE
+};
 
 enum{
     KHTTP_GET,
@@ -80,6 +85,8 @@ enum{
     KHTTP_ERR_DISCONN,
     KHTTP_ERR_NO_FD,
     KHTTP_ERR_NOT_SUPP,
+    KHTTP_ERR_NO_FILE,
+    KHTTP_ERR_FILE_READ,
     KHTTP_ERR_UNKNOWN
 };
 
@@ -131,12 +138,15 @@ typedef struct khttp_ctx {
     char                opaque[KHTTP_OPAQUE_LEN];
     char                qop[KHTTP_QOP_LEN];
     char                nonce[KHTTP_NONCE_LEN];
+    char                boundary[KHTTP_BOUND_LEN];
     // Body
     size_t              body_len;
     void                *body;
     int                 done;
     char                *data;
     char                *form;
+    size_t              form_len;
+    int                 cont;
     http_parser         hp;
 #ifdef OPENSSL
     BIO                 *bio;

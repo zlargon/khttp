@@ -2,8 +2,8 @@
 CFLAGS= -I. -I../ -Werror
 LDFLAGS= ../libkhttp.a -lssl -lcrypto
 
-.PHONY: test1 test_get test_post test_ssl test_put test_del
-all: test1 test_get test_post test_ssl test_put test_del
+.PHONY: test1 test_get test_post test_ssl test_put test_del test_post_form
+all: test1 test_get test_post test_ssl test_put test_del test_post_form
 
 test_ssl: test_ssl.o
 	$(CC) -o test_ssl.exe test_ssl.o $(CFLAGS) $(LDFLAGS)
@@ -22,6 +22,9 @@ test_put: test_put.o
 
 test_del: test_del.o
 	$(CC) -o test_del.exe test_del.o $(CFLAGS) $(LDFLAGS)
+
+test_post_form: test_post_form.o
+	$(CC) -o test_post_form.exe test_post_form.o $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -rf *.o *.exe

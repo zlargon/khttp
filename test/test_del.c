@@ -35,10 +35,10 @@ void test_del_basic()
 
 int main()
 {
-    while(1){
+    //while(1){
         test_del();
         test_del_digest();
         test_del_basic();
-    }
+    //}
     return 0;
 }

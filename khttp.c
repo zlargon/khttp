@@ -111,6 +111,20 @@ char *khttp_base64_decode(const char *data,
     }
     return decoded_data;
 }
+
+static size_t khttp_file_size(char *file)
+{
+    if(!file) return -1;
+    size_t len = -1;
+    FILE *fp = fopen(file, "r");
+    if(fp){
+        fseek(fp, 0, SEEK_END);
+        len = ftell(fp);
+        fclose(fp);
+    }
+    return len;
+}
+
 static char *khttp_auth2str(int type)
 {
     return auth_type[type].text;
@@ -299,12 +313,24 @@ static http_parser_settings http_parser_cb =
 
 khttp_ctx *khttp_new()
 {
+    unsigned char rand[8];
     khttp_ctx *ctx = malloc(sizeof(khttp_ctx));
     if(!ctx){
         LOG_ERROR("khttp context create failure out of memory\n");
         return NULL;
     }
     memset(ctx, 0, sizeof(khttp_ctx));
+    FILE *fp = fopen("/dev/urandom", "r");
+    if(fp){
+        size_t len = fread(rand, 1, 8, fp);
+        sprintf(ctx->boundary, "%02x%02x%02x%02x%02x%02x%02x%02x", 
+                rand[0], rand[1], rand[2], rand[3],
+                rand[4], rand[5], rand[6], rand[7]
+                );
+        fclose(fp);
+    }else{
+        //TODO random generate boundary
+    }
     return ctx;
 }
 
@@ -817,6 +843,66 @@ int khttp_set_post_data(khttp_ctx *ctx, char *data)
     return KHTTP_ERR_OK;
 }
 
+int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type)
+{
+    if(ctx == NULL || key == NULL || value == NULL || type < KHTTP_FORM_STRING || type > KHTTP_FORM_FILE) return -KHTTP_ERR_PARAM;
+    if(type == KHTTP_FORM_STRING){
+        size_t offset = ctx->form_len;
+        ctx->form_len = ctx->form_len + 44 + strlen("Content-Disposition: form-data; name=\"\"\r\n\r\n") + 2;
+        ctx->form_len = ctx->form_len + strlen(key) + strlen(value);
+        ctx->form = realloc(ctx->form, ctx->form_len + 1);
+        if(ctx->form == NULL) return -KHTTP_ERR_OOM;
+        char *head = ctx->form + offset;
+        sprintf(head, "--------------------------%s\r\n"
+                "Content-Disposition: form-data; name=\"%s\"\r\n\r\n"
+                "%s\r\n"
+                ,ctx->boundary
+                ,key
+                ,value
+                );
+    }else{
+        //TODO add file type checking
+        //text/plain or application/octet-stream
+        size_t offset = ctx->form_len;
+        ctx->form_len = ctx->form_len + 44 + strlen("Content-Disposition: form-data; name=\"\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n") + 2;
+        //origin size + end boundary + header + file end(\r\n)
+        size_t file_size = khttp_file_size(value);
+        if(file_size < 0){
+            LOG_ERROR("File %s not exist\n",value);
+            return -KHTTP_ERR_NO_FILE;
+        }
+        //Calculate the latest form length
+        ctx->form_len = ctx->form_len + strlen(key) + file_size + strlen(value);
+        ctx->form = realloc(ctx->form, ctx->form_len + 1);
+        if(ctx->form == NULL) return -KHTTP_ERR_OOM;
+        //Write the next header
+        char *head = ctx->form + offset;
+        int head_len = sprintf(head, "--------------------------%s\r\n"
+                "Content-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n"
+                "Content-Type: application/octet-stream\r\n\r\n"
+                ,ctx->boundary
+                ,key
+                ,value
+                );
+        head = head + head_len;//Offset header
+        FILE *fp = fopen(value, "r");
+        if(fp){
+            if(fread(head , 1, file_size, fp) != file_size){
+                LOG_ERROR("read file failure\n");
+                fclose(fp);
+                return -KHTTP_ERR_FILE_READ;
+            }
+            fclose(fp);
+        }
+        head = head + file_size;
+        head[0] = '\r';
+        head[1] = '\n';
+        head[2] = 0;
+        LOG_DEBUG("\n%s\n", ctx->form);
+    }
+    return KHTTP_ERR_OK;
+}
+
 int khttp_send_http_req(khttp_ctx *ctx)
 {
     char resp_str[KHTTP_RESP_LEN];
@@ -863,6 +949,17 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "Content-Length: %lu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else if(ctx->form){
+                len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Expect: 100-continue\r\n"
+                    "Content-Type: multipart/form-data; boundary=------------------------%s\r\n"
+                    "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, ctx->form_len + 44, ctx->boundary);
+                //FIXME change the Content-Type to dynamic like application/x-www-form-urlencoded or application/json...
             }else{
                 len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
                     "Authorization: Basic %s\r\n"
@@ -883,6 +980,15 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "Content-Length: %lu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
+            }else if(ctx->form){
+                len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
+                    "User-Agent: %s\r\n"
+                    "Host: %s\r\n"
+                    "Accept: */*\r\n"
+                    "Content-Length: %lu\r\n"
+                    "Expect: 100-continue\r\n"
+                    "Content-Type: multipart/form-data; boundary=------------------------%s\r\n"
+                    "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, ctx->form_len + 46, ctx->boundary);
             }else{
                 len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
                     "User-Agent: %s\r\n"
@@ -995,7 +1101,22 @@ int khttp_send_http_req(khttp_ctx *ctx)
     free(req);
     return 0;
 }
-
+int khttp_send_form(khttp_ctx *ctx)
+{
+    if(ctx->form){
+        LOG_DEBUG("length: %lu\n%s",ctx->form_len, ctx->form);
+        if(ctx->send(ctx, ctx->form, ctx->form_len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
+            LOG_ERROR("khttp request send failure\n");
+        }
+        char buf[47];
+        memset(buf, 0, 47);
+        snprintf(buf, 47,"--------------------------%s--\r\n", ctx->boundary);
+        if(ctx->send(ctx, buf, 46, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
+            LOG_ERROR("khttp request send failure\n");
+        }
+    }
+    return -KHTTP_ERR_OK;
+}
 int khttp_send_http_auth(khttp_ctx *ctx)
 {
     char ha1[KHTTP_NONCE_LEN];
@@ -1324,12 +1445,26 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
         if(len < 0) {
             return -KHTTP_ERR_RECV;
         }
-        //printf("%s\n", buf);
+        if(len == 0) return -KHTTP_ERR_DISCONN;
         data = realloc(data, total + len + 1);
         memcpy(data + total, buf, len);
         total += len;
         http_parser_init(&ctx->hp, HTTP_RESPONSE);
         ctx->body_len = 0;//Reset body length until parse finish.
+        if(strncmp(data, "HTTP/1.1 100 Continue", 21) == 0){
+            ctx->cont = 1;
+            char *end = strstr(data, "\r\n\r\n");
+            LOG_DEBUG("len: %d\n%s\n", len, data);
+            if(len == 25){//Only get 100 Continue
+                ctx->hp.status_code = 100;
+                //LOG_DEBUG("Only get 100 continue\n");
+                goto end;
+            }else if(len > 25){
+                ctx->cont = 1;//Get 100 Continue and others
+                total = total - 25;
+                memmove(data, data + 25, len - 25);
+            }
+        }
         //LOG_INFO("Parse:\n%s\n", data);
         http_parser_execute(&ctx->hp, &http_parser_cb, data, total);
         if(ctx->done == 1){
@@ -1348,11 +1483,13 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
     ctx->body_len = 0;
     if(ctx->body == NULL) return -KHTTP_ERR_OOM;
     http_parser_execute(&ctx->hp, &http_parser_cb, data, total);
-    //LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
+    LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
+    LOG_DEBUG("body:\n%s\n", ctx->body);
     //FIXME why mark end of data will crash. WTF
     data[total] = 0;
     khttp_dump_message_flow(data, total, 0);
     // Free receive buffer
+end:
     free(data);
     return KHTTP_ERR_OK;
 }
@@ -1417,6 +1554,18 @@ int khttp_perform(khttp_ctx *ctx)
             }
             //FIXME
             ctx->hp.status_code = 0;
+        }else if(ctx->hp.status_code == 200){
+            if(ctx->cont == 1 && ctx->form != NULL){
+                khttp_send_form(ctx);
+                ctx->cont = 0;//Clean continue flag for next read
+                goto end;//Send data then end
+            }
+        }else if(ctx->hp.status_code == 100){
+            if(ctx->cont == 1 && ctx->form != NULL){
+                khttp_send_form(ctx);
+                ctx->cont = 0;//Clean continue flag for next read
+            }
+            //TODO What's next if no form or data to send
         }else{
             LOG_DEBUG("Send HTTP request\n");
             if((res = khttp_send_http_req(ctx)) != 0){
@@ -1446,11 +1595,20 @@ int khttp_perform(khttp_ctx *ctx)
                 }
                 break;
             case 200:
-                LOG_INFO("GOT 200 OK\n");
+                LOG_INFO("GOT 200 OK count:%d\n", count);
+                if(ctx->cont == 1 && count == 0){
+                    LOG_INFO("Got 200 OK before send post data/form\n");
+                    break;
+                }
                 goto end;
                 break;
             case 100:
                 LOG_INFO("GOT 100 Continue\n");
+                if(ctx->cont == 1 && count == 0){
+                    break;
+                }
+                //khttp_send_form(ctx);
+                //Send form data...
                 break;
             default:
                 goto end;
