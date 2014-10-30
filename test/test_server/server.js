@@ -181,9 +181,78 @@ var register = function(app){
         res.status(200).end("OK");
     }
   });
+  app.post('/post_multipart_digest'
+          ,passport.authenticate('digest', { session: false })
+         ,multipartMiddleware
+          ,function(req, res){
+              var response = JSON.stringify(req.body);
+              if(req.files){
+                  response = JSON.stringify(req.files.file);
+              }
+    res.status(200).end(response);
+  });
+  app.post('/post_multipart'
+         ,multipartMiddleware
+          ,function(req, res){
+              var response = JSON.stringify(req.body);
+              if(req.files){
+                  response = JSON.stringify(req.files.file);
+              }
+    res.status(200).end(response);
+  });
+  app.post('/post_digest'
+          ,passport.authenticate('digest', { session: false })
+          ,function(req, res){
+              var response = JSON.stringify(req.body);
+              if(req.files){
+                  response = JSON.stringify(req.files.file);
+              }
+    res.status(200).end(response);
+  });
   app.post('/post'
           ,function(req, res){
+              var response = JSON.stringify(req.body);
+              if(req.files){
+                  response = JSON.stringify(req.files.file);
+              }
+    res.status(200).end(response);
+  });
+  app.put('/put'
+          ,function(req, res){
     res.status(200).end(JSON.stringify(req.body));
+  });
+  app.put('/putdigest'
+          ,passport.authenticate('digest', { session: false })
+          ,function(req, res){
+    res.status(200).end(JSON.stringify(req.body));
+  });
+  app.put('/putbasic'
+          ,passport.authenticate('basic', { session: false })
+          ,function(req, res){
+    res.status(200).end(JSON.stringify(req.body));
+  });
+  app.delete('/delete'
+          ,function(req, res){
+    res.status(200).end(JSON.stringify(req.body));
+  });
+  app.delete('/deletebasic'
+          ,passport.authenticate('basic', { session: false })
+          ,function(req, res){
+    res.status(200).end(JSON.stringify(req.body));
+  });
+  app.delete('/deletedigest'
+          ,passport.authenticate('digest', { session: false })
+          ,function(req, res){
+    res.status(200).end(JSON.stringify(req.body));
+  });
+  app.get('/form', function(req, res){
+      var html = '<form action="/post" method="post">' +
+      'Enter name:' +
+      '<input type="text" name="user name" placeholder="..." />' +
+      '<br>' +
+      '<button type="submit">Submit</button>' +
+      '</form>';
+    res.send(html);
   });
 };
 
