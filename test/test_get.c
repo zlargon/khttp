@@ -6,6 +6,11 @@ void test_chunked_encode()
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://www.inside.com.tw");
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 200){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 
@@ -15,6 +20,11 @@ void test_content_length()
     khttp_ctx *ctx = khttp_new();
     khttp_set_uri(ctx, "http://www.inside.com.tw");
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 200){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 
@@ -25,6 +35,11 @@ void test_digest()
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_DIGEST);
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 200){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 
@@ -35,6 +50,11 @@ void test_digest_fail()
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_DIGEST);
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 401){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 
@@ -45,6 +65,11 @@ void test_basic_but_digest()
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_BASIC);
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 200){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 
@@ -55,6 +80,11 @@ void test_basic_but_digest_fail()
     khttp_set_uri(ctx, "http://localhost:8888/digest");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_BASIC);
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 401){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 
@@ -65,6 +95,11 @@ void test_basic_fail()
     khttp_set_uri(ctx, "http://localhost:8888/basic");
     khttp_set_username_password(ctx, "bob", "secret1", KHTTP_AUTH_BASIC);
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 401){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 void test_basic()
@@ -74,6 +109,11 @@ void test_basic()
     khttp_set_uri(ctx, "http://localhost:8888/basic");
     khttp_set_username_password(ctx, "bob", "secret", KHTTP_AUTH_BASIC);
     khttp_perform(ctx);
+    if(ctx->hp.status_code == 200){
+        printf("PASS\n");
+    }else{
+        printf("FAIL");
+    }
     khttp_destroy(ctx);
 }
 

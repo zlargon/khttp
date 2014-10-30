@@ -56,8 +56,8 @@
 
 #define KHTTP_USER_AGENT    "khttp/0.1"
 
-#define KHTTP_DEBUG_SESS    1
-#define KHTTP_DEBUG_FLOW    1
+//#define KHTTP_DEBUG_SESS    1
+//#define KHTTP_DEBUG_FLOW    1
 
 enum{
     KHTTP_FORM_STRING,

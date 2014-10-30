@@ -537,7 +537,7 @@ int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
         FD_SET(ctx->fd, &fs);
         int res = select(ctx->fd + 1, NULL, &fs, NULL, &tv);
         if(res >= 0){
-            LOG_DEBUG("send data...\n");
+            //LOG_DEBUG("send data...\n");
             res = SSL_write(ctx->ssl, head + sent, len - sent);
             if(res > 0){
                 sent += res;
@@ -552,7 +552,7 @@ int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
             break;
         }
     }while(sent < len);
-    LOG_DEBUG("send https success\n%s\n", (char *)buf);
+    //LOG_DEBUG("send https success\n%s\n", (char *)buf);
     return ret;
 }
 #endif
@@ -790,7 +790,7 @@ int khttp_ssl_setup(khttp_ctx *ctx)
         LOG_ERROR("SSL_get_error failure %d %s\n", ret, error_buffer);
         return -KHTTP_ERR_SSL;//TODO
     }
-    LOG_DEBUG("Connect to SSL server success\n");
+    //LOG_DEBUG("Connect to SSL server success\n");
     return KHTTP_ERR_OK;
 }
 
@@ -898,7 +898,7 @@ int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type)
         head[0] = '\r';
         head[1] = '\n';
         head[2] = 0;
-        LOG_DEBUG("\n%s\n", ctx->form);
+        //LOG_DEBUG("\n%s\n", ctx->form);
     }
     return KHTTP_ERR_OK;
 }
@@ -1104,7 +1104,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
 int khttp_send_form(khttp_ctx *ctx)
 {
     if(ctx->form){
-        LOG_DEBUG("length: %lu\n%s",ctx->form_len, ctx->form);
+        //LOG_DEBUG("length: %lu\n%s",ctx->form_len, ctx->form);
         if(ctx->send(ctx, ctx->form, ctx->form_len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
             LOG_ERROR("khttp request send failure\n");
         }
@@ -1454,7 +1454,7 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
         if(strncmp(data, "HTTP/1.1 100 Continue", 21) == 0){
             ctx->cont = 1;
             char *end = strstr(data, "\r\n\r\n");
-            LOG_DEBUG("len: %d\n%s\n", len, data);
+            //LOG_DEBUG("len: %d\n%s\n", len, data);
             if(len == 25){//Only get 100 Continue
                 ctx->hp.status_code = 100;
                 //LOG_DEBUG("Only get 100 continue\n");
@@ -1483,8 +1483,8 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
     ctx->body_len = 0;
     if(ctx->body == NULL) return -KHTTP_ERR_OOM;
     http_parser_execute(&ctx->hp, &http_parser_cb, data, total);
-    LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
-    LOG_DEBUG("body:\n%s\n", ctx->body);
+    //LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
+    //LOG_DEBUG("body:\n%s\n", ctx->body);
     //FIXME why mark end of data will crash. WTF
     data[total] = 0;
     khttp_dump_message_flow(data, total, 0);
@@ -1529,7 +1529,7 @@ int khttp_perform(khttp_ctx *ctx)
            goto err;
         }
     }
-    LOG_DEBUG("khttp connect to server successfully\n");
+    //LOG_DEBUG("khttp connect to server successfully\n");
     freeaddrinfo(result);
     if(ctx->proto == KHTTP_HTTPS){
 #ifdef OPENSSL
@@ -1537,7 +1537,7 @@ int khttp_perform(khttp_ctx *ctx)
             LOG_ERROR("khttp ssl setup failure\n");
             return -KHTTP_ERR_SSL;
         }
-        LOG_DEBUG("khttp setup ssl connection successfully\n");
+        //LOG_DEBUG("khttp setup ssl connection successfully\n");
 #else
         return -KHTTP_ERR_NOT_SUPP;
 #endif
@@ -1546,7 +1546,7 @@ int khttp_perform(khttp_ctx *ctx)
     for(;;)
     {
         if(ctx->hp.status_code == 401){
-            LOG_DEBUG("Send HTTP authentication response\n");
+            //LOG_DEBUG("Send HTTP authentication response\n");
             //FIXME change to khttp_send_http_auth
             if((res = khttp_send_http_auth(ctx)) != 0){
                 LOG_ERROR("khttp send HTTP authentication response failure %d\n", res);
@@ -1567,7 +1567,7 @@ int khttp_perform(khttp_ctx *ctx)
             }
             //TODO What's next if no form or data to send
         }else{
-            LOG_DEBUG("Send HTTP request\n");
+            //LOG_DEBUG("Send HTTP request\n");
             if((res = khttp_send_http_req(ctx)) != 0){
                 LOG_ERROR("khttp send HTTP request failure %d\n", res);
                 break;
@@ -1581,7 +1581,7 @@ int khttp_perform(khttp_ctx *ctx)
             ret = res;
             goto err;
         }
-        LOG_DEBUG("receive HTTP response success\n");
+        //LOG_DEBUG("receive HTTP response success\n");
         switch(ctx->hp.status_code)
         {
             case 401:
@@ -1595,15 +1595,15 @@ int khttp_perform(khttp_ctx *ctx)
                 }
                 break;
             case 200:
-                LOG_INFO("GOT 200 OK count:%d\n", count);
+                //LOG_INFO("GOT 200 OK count:%d\n", count);
                 if(ctx->cont == 1 && count == 0){
-                    LOG_INFO("Got 200 OK before send post data/form\n");
+                    //LOG_INFO("Got 200 OK before send post data/form\n");
                     break;
                 }
                 goto end;
                 break;
             case 100:
-                LOG_INFO("GOT 100 Continue\n");
+                //LOG_INFO("GOT 100 Continue\n");
                 if(ctx->cont == 1 && count == 0){
                     break;
                 }
