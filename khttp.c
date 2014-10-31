@@ -1,6 +1,7 @@
 #include "khttp.h"
 #include "log.h"
 #include <errno.h>
+#include <time.h>
 
 int khttp_socket_nonblock(int fd, int enable);
 int khttp_socket_reuseaddr(int fd, int enable);
@@ -313,22 +314,42 @@ static http_parser_settings http_parser_cb =
 
 khttp_ctx *khttp_new()
 {
-    unsigned char rand[8];
+    unsigned char rands[8];
     khttp_ctx *ctx = malloc(sizeof(khttp_ctx));
     if(!ctx){
         LOG_ERROR("khttp context create failure out of memory\n");
         return NULL;
     }
     memset(ctx, 0, sizeof(khttp_ctx));
+#ifdef KHTTP_USE_URANDOM
     FILE *fp = fopen("/dev/urandom", "r");
     if(fp){
-        size_t len = fread(rand, 1, 8, fp);
-        sprintf(ctx->boundary, "%02x%02x%02x%02x%02x%02x%02x%02x", 
-                rand[0], rand[1], rand[2], rand[3],
-                rand[4], rand[5], rand[6], rand[7]
+        size_t len = fread(rands, 1, 8, fp);
+        sprintf(ctx->boundary, "%02x%02x%02x%02x%02x%02x%02x%02x",
+                rands[0], rands[1], rands[2], rands[3],
+                rands[4], rands[5], rands[6], rands[7]
                 );
         fclose(fp);
     }else{
+#else
+    if(1){
+#endif
+        srand (time(NULL));
+        int r = rand();
+        rands[0] = r >> 24;
+        rands[1] = r >> 16;
+        rands[2] = r >> 8;
+        rands[3] = r;
+        srand(r);
+        r = rand();
+        rands[4] = r >> 24;
+        rands[5] = r >> 16;
+        rands[6] = r >> 8;
+        rands[7] = r;
+        sprintf(ctx->boundary, "%02x%02x%02x%02x%02x%02x%02x%02x",
+                rands[0], rands[1], rands[2], rands[3],
+                rands[4], rands[5], rands[6], rands[7]
+                );
         //TODO random generate boundary
     }
     return ctx;
