@@ -1530,6 +1530,7 @@ int khttp_perform(khttp_ctx *ctx)
     if((res = getaddrinfo(ctx->host, port, &hints, &result)) != 0){
         LOG_ERROR("khttp DNS lookup failure. getaddrinfo: %s\n", gai_strerror(res));
         ret = -KHTTP_ERR_DNS;
+        goto err;
     }
     ctx->serv_addr.sin_addr = ((struct sockaddr_in *)result->ai_addr)->sin_addr;
     ctx->serv_addr.sin_port = htons(ctx->port);
@@ -1540,6 +1541,7 @@ int khttp_perform(khttp_ctx *ctx)
     if(ctx->fd < 1){
         LOG_ERROR("khttp socket create error\n");
         ret = -KHTTP_ERR_SOCK;
+        goto err1;
     }
     if(connect(ctx->fd, result->ai_addr, result->ai_addrlen)!= 0) {
         if(errno == -EINPROGRESS){
@@ -1547,7 +1549,7 @@ int khttp_perform(khttp_ctx *ctx)
         }else{
            LOG_ERROR("khttp connect to server error %d(%s)\n", errno, strerror(errno));
            ret = -KHTTP_ERR_CONNECT;
-           goto err;
+           goto err1;
         }
     }
     //LOG_DEBUG("khttp connect to server successfully\n");
@@ -1642,6 +1644,9 @@ int khttp_perform(khttp_ctx *ctx)
         //printf("end\n%s\n", (char *)ctx->body);
     }
 end:
+    return ret;
+err1:
+    freeaddrinfo(result);
 err:
     //khttp_dump_header(ctx);
     return ret;
