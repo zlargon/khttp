@@ -832,6 +832,8 @@ int khttp_ssl_skip_auth(khttp_ctx *ctx)
 int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw)
 {
     if(ctx == NULL || cert == NULL || key == NULL) return -KHTTP_ERR_PARAM;
+    if(khttp_file_size(cert) < 0) return -KHTTP_ERR_NO_FILE;
+    if(khttp_file_size(key) < 0) return -KHTTP_ERR_NO_FILE;
     strncpy(ctx->cert_path, cert, KHTTP_PATH_LEN);
     strncpy(ctx->key_path, key, KHTTP_PATH_LEN);
     if(pw) strncpy(ctx->key_pass, pw, KHTTP_PASS_LEN);
