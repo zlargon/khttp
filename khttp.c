@@ -860,7 +860,7 @@ int khttp_set_post_data(khttp_ctx *ctx, char *data)
     if(ctx->data) free(ctx->data);
     //Malloc memory from data string length. Should be protect?
     ctx->data = malloc(strlen(data) + 1);
-    if(!ctx->data) -KHTTP_ERR_OOM;
+    if(!ctx->data) return -KHTTP_ERR_OOM;
     //Copy from data
     strcpy(ctx->data, data);
     return KHTTP_ERR_OK;
