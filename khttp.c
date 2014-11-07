@@ -939,7 +939,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
         if(ctx->auth_type == KHTTP_AUTH_BASIC){
             len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
             size_t base64_len;
-            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
+            char *base64 = khttp_base64_encode((unsigned char *) resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
             len = snprintf(req, KHTTP_REQ_SIZE, "GET %s HTTP/1.1\r\n"
                 "Authorization: Basic %s\r\n"
@@ -961,7 +961,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
         if(ctx->auth_type == KHTTP_AUTH_BASIC){
             len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
             size_t base64_len;
-            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
+            char *base64 = khttp_base64_encode((unsigned char *) resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
             if(ctx->data){
                 len = snprintf(req, KHTTP_REQ_SIZE, "POST %s HTTP/1.1\r\n"
@@ -1024,7 +1024,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
         if(ctx->auth_type == KHTTP_AUTH_BASIC){
             len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
             size_t base64_len;
-            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
+            char *base64 = khttp_base64_encode((unsigned char *) resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
             if(ctx->data){
                 len = snprintf(req, KHTTP_REQ_SIZE, "PUT %s HTTP/1.1\r\n"
@@ -1067,7 +1067,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
         if(ctx->auth_type == KHTTP_AUTH_BASIC){
             len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
             size_t base64_len;
-            char *base64 = khttp_base64_encode(resp_str, len, &base64_len);
+            char *base64 = khttp_base64_encode((unsigned char *) resp_str, len, &base64_len);
             if(!base64) return -KHTTP_ERR_OOM;
             if(ctx->data){
                 len = snprintf(req, KHTTP_REQ_SIZE, "DELETE %s HTTP/1.1\r\n"
@@ -1165,7 +1165,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
         //TODO add random rule generate cnonce
         khttp_md5sum(cnonce, strlen(cnonce), cnonce);
         size_t cnonce_b64_len;
-        cnonce_b64 = khttp_base64_encode(cnonce, 32, &cnonce_b64_len);
+        cnonce_b64 = khttp_base64_encode((unsigned char *) cnonce, 32, &cnonce_b64_len);
         //response
         if(strcmp(ctx->qop, "auth") == 0){
             //FIXME dynamic generate nonceCount "00000001"
@@ -1178,7 +1178,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
     }else if(ctx->auth_type == KHTTP_AUTH_BASIC){
         len = snprintf(resp_str, KHTTP_RESP_LEN, "%s:%s", ctx->username, ctx->password);
         size_t cnonce_b64_len;
-        cnonce_b64 = khttp_base64_encode(resp_str, len, &cnonce_b64_len);
+        cnonce_b64 = khttp_base64_encode((unsigned char *) resp_str, len, &cnonce_b64_len);
     }
     if(ctx->method == KHTTP_GET) {
         if(ctx->auth_type == KHTTP_AUTH_DIGEST){//Digest auth

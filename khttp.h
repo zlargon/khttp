@@ -19,6 +19,7 @@
 #ifdef OPENSSL
 #include <openssl/ssl.h>
 #include <openssl/md5.h>
+#include <openssl/err.h>
 #endif
 
 #define KHTTP_HOST_LEN      1024
