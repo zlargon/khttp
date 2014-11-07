@@ -832,8 +832,8 @@ int khttp_ssl_skip_auth(khttp_ctx *ctx)
 int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw)
 {
     if(ctx == NULL || cert == NULL || key == NULL) return -KHTTP_ERR_PARAM;
-    if(khttp_file_size(cert) < 0) return -KHTTP_ERR_NO_FILE;
-    if(khttp_file_size(key) < 0) return -KHTTP_ERR_NO_FILE;
+    if(khttp_file_size(cert) <= 0) return -KHTTP_ERR_NO_FILE;
+    if(khttp_file_size(key) <= 0) return -KHTTP_ERR_NO_FILE;
     strncpy(ctx->cert_path, cert, KHTTP_PATH_LEN);
     strncpy(ctx->key_path, key, KHTTP_PATH_LEN);
     if(pw) strncpy(ctx->key_pass, pw, KHTTP_PASS_LEN);
@@ -890,7 +890,7 @@ int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type)
         ctx->form_len = ctx->form_len + 44 + strlen("Content-Disposition: form-data; name=\"\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n") + 2;
         //origin size + end boundary + header + file end(\r\n)
         size_t file_size = khttp_file_size(value);
-        if(file_size < 0){
+        if(file_size <= 0){
             LOG_ERROR("File %s not exist\n",value);
             return -KHTTP_ERR_NO_FILE;
         }
@@ -1162,7 +1162,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
         memset(ha2, 0, KHTTP_NONCE_LEN);
         khttp_md5sum(path, len, ha2);
         //cnonce
-        //TODO add random rule generate cnonce 
+        //TODO add random rule generate cnonce
         khttp_md5sum(cnonce, strlen(cnonce), cnonce);
         size_t cnonce_b64_len;
         cnonce_b64 = khttp_base64_encode(cnonce, 32, &cnonce_b64_len);
