@@ -24,7 +24,6 @@
 
 #define KHTTP_HOST_LEN      1024
 #define KHTTP_PATH_LEN      1024
-#define KHTTP_PATH_LEN      1024
 #define KHTTP_PASS_LEN      128
 #define KHTTP_USER_LEN      128
 
