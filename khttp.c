@@ -1476,7 +1476,7 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
         ctx->body_len = 0;//Reset body length until parse finish.
         if(strncmp(data, "HTTP/1.1 100 Continue", 21) == 0){
             ctx->cont = 1;
-            char *end = strstr(data, "\r\n\r\n");
+            // char *end = strstr(data, "\r\n\r\n");
             //LOG_DEBUG("len: %d\n%s\n", len, data);
             if(len == 25){//Only get 100 Continue
                 ctx->hp.status_code = 100;
