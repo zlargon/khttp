@@ -969,7 +969,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
             }else if(ctx->form){
@@ -978,7 +978,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Expect: 100-continue\r\n"
                     "Content-Type: multipart/form-data; boundary=------------------------%s\r\n"
                     "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, ctx->form_len + 44, ctx->boundary);
@@ -1000,7 +1000,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
             }else if(ctx->form){
@@ -1008,7 +1008,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Expect: 100-continue\r\n"
                     "Content-Type: multipart/form-data; boundary=------------------------%s\r\n"
                     "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, ctx->form_len + 46, ctx->boundary);
@@ -1032,7 +1032,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
             }else{
@@ -1052,7 +1052,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
             }else{
@@ -1075,7 +1075,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, base64 ,KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
             }else{
@@ -1095,7 +1095,7 @@ int khttp_send_http_req(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n", ctx->path, KHTTP_USER_AGENT, ctx->host, strlen(ctx->data));
             }else{
@@ -1224,7 +1224,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s:%d\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n",
                     ctx->path,
@@ -1263,7 +1263,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s:%d\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n",
                     ctx->path,
@@ -1299,7 +1299,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s:%d\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n",
                     ctx->path,
@@ -1338,7 +1338,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s:%d\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n",
                     ctx->path,
@@ -1374,7 +1374,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s:%d\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n",
                     ctx->path,
@@ -1413,7 +1413,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
                     "User-Agent: %s\r\n"
                     "Host: %s:%d\r\n"
                     "Accept: */*\r\n"
-                    "Content-Length: %lu\r\n"
+                    "Content-Length: %zu\r\n"
                     "Content-Type: application/x-www-form-urlencoded\r\n"
                     "\r\n",
                     ctx->path,
@@ -1476,7 +1476,7 @@ int khttp_recv_http_resp(khttp_ctx *ctx)
         ctx->body_len = 0;//Reset body length until parse finish.
         if(strncmp(data, "HTTP/1.1 100 Continue", 21) == 0){
             ctx->cont = 1;
-            char *end = strstr(data, "\r\n\r\n");
+            // char *end = strstr(data, "\r\n\r\n");
             //LOG_DEBUG("len: %d\n%s\n", len, data);
             if(len == 25){//Only get 100 Continue
                 ctx->hp.status_code = 100;
