@@ -183,7 +183,6 @@ static const char *khttp_type2str(int type)
 
 static int khttp_body_cb (http_parser *p, const char *buf, size_t len)
 {
-    //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
     char *head = ctx->body;
     if(ctx->done == 1){ //Parse done copy body
@@ -192,13 +191,12 @@ static int khttp_body_cb (http_parser *p, const char *buf, size_t len)
         memcpy(head + offset, buf, len);
     }
     ctx->body_len += len;
-    //LOG_DEBUG("body callbacked length:%zu\n", len);
+    //khttp_debug("body callbacked length:%zu\n", len);
     return 0;
 }
 
 static int khttp_response_status_cb (http_parser *p, const char *buf, size_t len)
 {
-    //LOG_DEBUG("\n");
 #ifndef KHTTP_DEBUG
     return 0;
 #else
@@ -206,7 +204,7 @@ static int khttp_response_status_cb (http_parser *p, const char *buf, size_t len
     if(!tmp) return 0;
     tmp[len] = 0;
     memcpy(tmp, buf, len);
-    LOG_DEBUG("khttp status code %s\n", tmp);
+    khttp_debug("khttp status code %s\n", tmp);
     free(tmp);
     return 0;
 #endif
@@ -214,7 +212,6 @@ static int khttp_response_status_cb (http_parser *p, const char *buf, size_t len
 
 static int khttp_message_complete_cb (http_parser *p)
 {
-    //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
     ctx->done = 1;
     return 0;
@@ -222,7 +219,6 @@ static int khttp_message_complete_cb (http_parser *p)
 
 static int khttp_header_field_cb (http_parser *p, const char *buf, size_t len)
 {
-    //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
     if(ctx->done == 1){
         char *tmp = malloc(len + 1);
@@ -237,7 +233,6 @@ static int khttp_header_field_cb (http_parser *p, const char *buf, size_t len)
 
 static int khttp_header_value_cb (http_parser *p, const char *buf, size_t len)
 {
-    //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
     if(ctx->done == 1){
         char *tmp = malloc(len + 1);
@@ -363,7 +358,7 @@ khttp_ctx *khttp_new()
     unsigned char rands[8];
     khttp_ctx *ctx = malloc(sizeof(khttp_ctx));
     if(!ctx){
-        LOG_ERROR("khttp context create failure out of memory\n");
+        khttp_error("khttp context create failure out of memory\n");
         return NULL;
     }
     memset(ctx, 0, sizeof(khttp_ctx));
@@ -437,7 +432,7 @@ static int khttp_socket_create()
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0){
-        LOG_ERROR("khttp socket create failure %d(%s)\n", errno, strerror(errno));
+        khttp_error("khttp socket create failure %d(%s)\n", errno, strerror(errno));
         return fd;
     }
     //Default enable nonblock / reuseaddr and set send / recv timeout
@@ -453,7 +448,7 @@ static int khttp_socket_nonblock(int fd, int enable)
     unsigned long on = enable;
     int ret = ioctl(fd, FIONBIO, &on);
     if(ret != 0){
-        LOG_WARN("khttp set socket nonblock failure %d(%s)\n", errno, strerror(errno));
+        khttp_warn("khttp set socket nonblock failure %d(%s)\n", errno, strerror(errno));
     }
     return ret;
 }
@@ -462,7 +457,7 @@ static int khttp_socket_reuseaddr(int fd, int enable)
 {
     int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable, sizeof(enable));
     if(ret != 0){
-        LOG_WARN("khttp set socket reuseaddr failure %d(%s)\n", errno, strerror(errno));
+        khttp_warn("khttp set socket reuseaddr failure %d(%s)\n", errno, strerror(errno));
     }
     return ret;
 }
@@ -474,7 +469,7 @@ static int http_socket_sendtimeout(int fd, int timeout)
     tv.tv_usec = 0;
     int ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&tv, sizeof(tv));
     if(ret != 0){
-        LOG_WARN("khttp set socket send timeout failure %d(%s)\n", errno, strerror(errno));
+        khttp_warn("khttp set socket send timeout failure %d(%s)\n", errno, strerror(errno));
     }
     return ret;
 }
@@ -486,7 +481,7 @@ static int http_socket_recvtimeout(int fd, int timeout)
     tv.tv_usec = 0;
     int ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
     if(ret != 0){
-        LOG_WARN("khttp set socket recv timeout failure %d(%s)\n", errno, strerror(errno));
+        khttp_warn("khttp set socket recv timeout failure %d(%s)\n", errno, strerror(errno));
     }
     return ret;
 }
@@ -512,14 +507,14 @@ static int khttp_md5sum(char *input, int len, char *out)
 #else
 //#error "FIXME NO OPENSSL"
 #endif
-    //LOG_DEBUG("MD5:[%s]\n", out);
+    //khttp_debug("MD5:[%s]\n", out);
     return ret;
 }
 
 int khttp_set_method(khttp_ctx *ctx, int method)
 {
     if(method < KHTTP_GET || method > KHTTP_DELETE){
-        LOG_ERROR("khttp set method parameter out of range\n");
+        khttp_error("khttp set method parameter out of range\n");
         return -KHTTP_ERR_PARAM;
     }
     ctx->method = method;
@@ -574,12 +569,12 @@ static int http_send(khttp_ctx *ctx, void *buf, int len, int timeout)
         int ret = select(ctx->fd +1, NULL, &fs, NULL, &tv);
         if(ret >= 0){
             // ret == 0 handle?
-            //LOG_DEBUG("send:\n%s\nfd:%d\n", head, ctx->fd);
+            //khttp_debug("send:\n%s\nfd:%d\n", head, ctx->fd);
             ret = send(ctx->fd, head + sent, len - sent, 0);
             if(ret > 0) {
                 sent += ret;
             } else {
-                LOG_ERROR("khttp send error %d (%s)\n", errno, strerror(errno));
+                khttp_error("khttp send error %d (%s)\n", errno, strerror(errno));
                 return -KHTTP_ERR_SEND;
             }
         }else{
@@ -606,7 +601,7 @@ static int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
         FD_SET(ctx->fd, &fs);
         int res = select(ctx->fd + 1, NULL, &fs, NULL, &tv);
         if(res >= 0){
-            //LOG_DEBUG("send data...\n");
+            //khttp_debug("send data...\n");
             res = SSL_write(ctx->ssl, head + sent, len - sent);
             if(res > 0){
                 sent += res;
@@ -621,7 +616,7 @@ static int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
             break;
         }
     }while(sent < len);
-    //LOG_DEBUG("send https success\n%s\n", (char *)buf);
+    //khttp_debug("send https success\n%s\n", (char *)buf);
     return ret;
 }
 #endif
@@ -639,15 +634,15 @@ static int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
     ret = select(ctx->fd + 1, &fs, NULL, NULL, &tv);
     if(ret >= 0) {
         if(ret == 0) {
-            LOG_ERROR("khttp recv timeout\n");
+            khttp_error("khttp recv timeout\n");
         }
         ret = recv(ctx->fd, buf, len, 0);
         if(ret < 0) {
-            LOG_ERROR("khttp recv error %d (%s)\n", errno, strerror(errno));
+            khttp_error("khttp recv error %d (%s)\n", errno, strerror(errno));
             return -KHTTP_ERR_RECV;
         }
     }else{
-        LOG_ERROR("khttp recv select error %d (%s)\n", errno, strerror(errno));
+        khttp_error("khttp recv select error %d (%s)\n", errno, strerror(errno));
     }
     return ret;
 }
@@ -665,7 +660,7 @@ static int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
         //data available
         res = SSL_read(ctx->ssl, buf, len);
         if(res <= 0){
-            LOG_ERROR("SSL_read  error %d(%s)\n", errno, strerror(errno));
+            khttp_error("SSL_read  error %d(%s)\n", errno, strerror(errno));
             ret = -KHTTP_ERR_RECV;
             goto end;
         }
@@ -677,17 +672,17 @@ static int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
         FD_SET(ctx->fd, &fs);
         res = select(ctx->fd + 1, &fs, NULL, NULL, &tv);
         if(res < 0){
-            LOG_ERROR("https select error %d(%s)\n", errno, strerror(errno));
+            khttp_error("https select error %d(%s)\n", errno, strerror(errno));
             ret = -KHTTP_ERR_RECV;
             goto end;
         }else if(res == 0){
-            LOG_ERROR("https select timeout\n");
+            khttp_error("https select timeout\n");
             ret = -KHTTP_ERR_TIMEOUT;
             goto end;
         }
         res = SSL_read(ctx->ssl, buf, len);
         if(res <= 0){
-            LOG_ERROR("SSL_read  error %d(%s)\n", errno, strerror(errno));
+            khttp_error("SSL_read  error %d(%s)\n", errno, strerror(errno));
             ret = -KHTTP_ERR_RECV;
             goto end;
         }
@@ -736,7 +731,7 @@ int khttp_set_uri(khttp_ctx *ctx, char *uri)
     if((port = strchr(host, ':'))!= NULL) {
         ctx->port = atoi(port + 1);
         if(ctx->port < 1 || ctx->port > 65535){
-            LOG_ERROR("khttp set port out of range: %d! use default port\n", ctx->port);
+            khttp_error("khttp set port out of range: %d! use default port\n", ctx->port);
             if(ctx->proto == KHTTP_HTTPS) ctx->port = 443;
             else ctx->port = 80;
         }
@@ -758,12 +753,12 @@ static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store)
         cert = X509_STORE_CTX_get_current_cert(store);
         depth = X509_STORE_CTX_get_error_depth(store);
         err = X509_STORE_CTX_get_error(store);
-        LOG_DEBUG("Error with certificate at depth: %i", depth);
+        khttp_debug("Error with certificate at depth: %i", depth);
         X509_NAME_oneline(X509_get_issuer_name(cert), data, KHTTP_SSL_DATA_LEN);
-        LOG_DEBUG(" issuer = %s", data);
+        khttp_debug(" issuer = %s", data);
         X509_NAME_oneline(X509_get_subject_name(cert), data, KHTTP_SSL_DATA_LEN);
-        LOG_DEBUG(" subject = %s", data);
-        LOG_DEBUG(" err %i:%s", err, X509_verify_cert_error_string(err));
+        khttp_debug(" subject = %s", data);
+        khttp_debug(" err %i:%s", err, X509_verify_cert_error_string(err));
         return 0;
     }
     return ok;
@@ -774,33 +769,33 @@ static int khttp_ssl_setup(khttp_ctx *ctx)
     int ret = 0;
     SSL_load_error_strings();
     if(SSL_library_init() != 1) {
-        LOG_ERROR("SSL library init failure\n");
+        khttp_error("SSL library init failure\n");
         return -KHTTP_ERR_SSL;
     }
     if(ctx->ssl_method == KHTTP_METHOD_SSLV2_3){
         if( (ctx->ssl_ctx = SSL_CTX_new(SSLv23_client_method())) == NULL) {
-            LOG_ERROR("SSL setup request method SSLv23 failure\n");
+            khttp_error("SSL setup request method SSLv23 failure\n");
             return -KHTTP_ERR_SSL;
         }
     }else if(ctx->ssl_method == KHTTP_METHOD_SSLV3){
         if( (ctx->ssl_ctx = SSL_CTX_new(SSLv3_client_method())) == NULL) {
-            LOG_ERROR("SSL setup request method SSLv3 failure\n");
+            khttp_error("SSL setup request method SSLv3 failure\n");
             return -KHTTP_ERR_SSL;
         }
     }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1){
         if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_client_method())) == NULL) {
-            LOG_ERROR("SSL setup request method TLSv1 failure\n");
+            khttp_error("SSL setup request method TLSv1 failure\n");
             return -KHTTP_ERR_SSL;
         }
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
     }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1_1){
         if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_1_client_method())) == NULL) {
-            LOG_ERROR("SSL setup request method TLSv1_1 failure\n");
+            khttp_error("SSL setup request method TLSv1_1 failure\n");
             return -KHTTP_ERR_SSL;
         }
     }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1_2){
         if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_2_client_method())) == NULL) {
-            LOG_ERROR("SSL setup request method TLSv1_2 failure\n");
+            khttp_error("SSL setup request method TLSv1_2 failure\n");
             return -KHTTP_ERR_SSL;
         }
 #endif
@@ -814,31 +809,31 @@ static int khttp_ssl_setup(khttp_ctx *ctx)
         SSL_CTX_set_verify(ctx->ssl_ctx, SSL_VERIFY_PEER, ssl_ca_verify_cb);
         SSL_CTX_set_verify_depth(ctx->ssl_ctx, KHTTP_SSL_DEPTH);
         if(SSL_CTX_load_verify_locations(ctx->ssl_ctx, ctx->cert_path, NULL) != 1){
-            LOG_ERROR("khttp not able to load certificate on path: %s\n", ctx->cert_path);
+            khttp_error("khttp not able to load certificate on path: %s\n", ctx->cert_path);
         }
     }
     SSL_CTX_set_default_passwd_cb_userdata(ctx->ssl_ctx, ctx->key_pass);
     if(SSL_CTX_use_certificate_chain_file(ctx->ssl_ctx, ctx->cert_path) == 1) {
-        LOG_DEBUG("khttp load certificate success\n");
+        khttp_debug("khttp load certificate success\n");
     }
     if(SSL_CTX_use_PrivateKey_file(ctx->ssl_ctx, ctx->key_path, SSL_FILETYPE_PEM) == 1) {
-        LOG_DEBUG("khttp load private key success\n");
+        khttp_debug("khttp load private key success\n");
     }
     if(SSL_CTX_check_private_key(ctx->ssl_ctx) == 1) {
-        LOG_DEBUG("khttp check private key success\n");
+        khttp_debug("khttp check private key success\n");
     }
     if((ctx->ssl = SSL_new(ctx->ssl_ctx)) == NULL) {
-        LOG_ERROR("create SSL failure\n");
+        khttp_error("create SSL failure\n");
         return -KHTTP_ERR_SSL;
     }
     if((ret = SSL_set_fd(ctx->ssl, ctx->fd)) != 1) {
         ret = SSL_get_error(ctx->ssl, ret);
-        LOG_ERROR("set SSL fd failure %d\n", ret);
+        khttp_error("set SSL fd failure %d\n", ret);
         return -KHTTP_ERR_SSL;
     }
     if((ret = SSL_connect(ctx->ssl)) != 1) {
         char error_buffer[256];
-        LOG_ERROR("SSL_connect failure %d\n", ret);
+        khttp_error("SSL_connect failure %d\n", ret);
         ret = SSL_get_error(ctx->ssl, ret);
         if(SSL_ERROR_WANT_READ == ret){
             return KHTTP_ERR_OK;
@@ -858,10 +853,10 @@ static int khttp_ssl_setup(khttp_ctx *ctx)
                 ERR_error_string_n(ret, error_buffer, sizeof(error_buffer));
                 break;
         }
-        LOG_ERROR("SSL_get_error failure %d %s\n", ret, error_buffer);
+        khttp_error("SSL_get_error failure %d %s\n", ret, error_buffer);
         return -KHTTP_ERR_SSL;//TODO
     }
-    //LOG_DEBUG("Connect to SSL server success\n");
+    //khttp_debug("Connect to SSL server success\n");
     return KHTTP_ERR_OK;
 }
 
@@ -942,7 +937,7 @@ int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type)
         //origin size + end boundary + header + file end(\r\n)
         size_t file_size = khttp_file_size(value);
         if(file_size <= 0){
-            LOG_ERROR("File %s not exist\n",value);
+            khttp_error("File %s not exist\n",value);
             return -KHTTP_ERR_NO_FILE;
         }
         //Calculate the latest form length
@@ -962,7 +957,7 @@ int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type)
         FILE *fp = fopen(value, "r");
         if(fp){
             if(fread(head , 1, file_size, fp) != file_size){
-                LOG_ERROR("read file failure\n");
+                khttp_error("read file failure\n");
                 fclose(fp);
                 return -KHTTP_ERR_FILE_READ;
             }
@@ -972,7 +967,7 @@ int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type)
         head[0] = '\r';
         head[1] = '\n';
         head[2] = 0;
-        //LOG_DEBUG("\n%s\n", ctx->form);
+        //khttp_debug("\n%s\n", ctx->form);
     }
     return KHTTP_ERR_OK;
 }
@@ -1163,13 +1158,13 @@ static int khttp_send_http_req(khttp_ctx *ctx)
     if(req){
         khttp_dump_message_flow(req, len, 0);
         if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-            LOG_ERROR("khttp request send failure\n");
+            khttp_error("khttp request send failure\n");
         }
     }
     if(ctx->data){
         khttp_dump_message_flow(ctx->data, len, 0);
         if(ctx->send(ctx, ctx->data, strlen(ctx->data), KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-            LOG_ERROR("khttp request send failure\n");
+            khttp_error("khttp request send failure\n");
         }
     }
     free(req);
@@ -1179,15 +1174,15 @@ static int khttp_send_http_req(khttp_ctx *ctx)
 static int khttp_send_form(khttp_ctx *ctx)
 {
     if(ctx->form){
-        //LOG_DEBUG("length: %lu\n%s",ctx->form_len, ctx->form);
+        //khttp_debug("length: %lu\n%s",ctx->form_len, ctx->form);
         if(ctx->send(ctx, ctx->form, ctx->form_len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-            LOG_ERROR("khttp request send failure\n");
+            khttp_error("khttp request send failure\n");
         }
         char buf[47];
         memset(buf, 0, 47);
         snprintf(buf, 47,"--------------------------%s--\r\n", ctx->boundary);
         if(ctx->send(ctx, buf, 46, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-            LOG_ERROR("khttp request send failure\n");
+            khttp_error("khttp request send failure\n");
         }
     }
     return -KHTTP_ERR_OK;
@@ -1494,12 +1489,12 @@ static int khttp_send_http_auth(khttp_ctx *ctx)
     }
     khttp_dump_message_flow(req, len, 0);
     if(ctx->send(ctx, req, len, KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-        LOG_ERROR("khttp request send failure\n");
+        khttp_error("khttp request send failure\n");
     }
     if(ctx->data){
         khttp_dump_message_flow(ctx->data, len, 0);
         if(ctx->send(ctx, ctx->data, strlen(ctx->data), KHTTP_SEND_TIMEO) != KHTTP_ERR_OK){
-            LOG_ERROR("khttp request send failure\n");
+            khttp_error("khttp request send failure\n");
         }
     }
     if(cnonce_b64) free(cnonce_b64);
@@ -1530,10 +1525,10 @@ static int khttp_recv_http_resp(khttp_ctx *ctx)
         if(strncmp(data, "HTTP/1.1 100 Continue", 21) == 0){
             ctx->cont = 1;
             // char *end = strstr(data, "\r\n\r\n");
-            //LOG_DEBUG("len: %d\n%s\n", len, data);
+            //khttp_debug("len: %d\n%s\n", len, data);
             if(len == 25){//Only get 100 Continue
                 ctx->hp.status_code = 100;
-                //LOG_DEBUG("Only get 100 continue\n");
+                //khttp_debug("Only get 100 continue\n");
                 goto end;
             }else if(len > 25){
                 ctx->cont = 1;//Get 100 Continue and others
@@ -1541,7 +1536,7 @@ static int khttp_recv_http_resp(khttp_ctx *ctx)
                 memmove(data, data + 25, len - 25);
             }
         }
-        //LOG_INFO("Parse:\n%s\n", data);
+        //khttp_info("Parse:\n%s\n", data);
         http_parser_execute(&ctx->hp, &http_parser_cb, data, total);
         if(ctx->done == 1){
             break;
@@ -1553,14 +1548,14 @@ static int khttp_recv_http_resp(khttp_ctx *ctx)
     if(!ctx->body){
         return -KHTTP_ERR_OOM;
     }
-    //LOG_DEBUG("malloc %zu byte for body\n", ctx->body_len);
+    //khttp_debug("malloc %zu byte for body\n", ctx->body_len);
     memset(ctx->body, 0, ctx->body_len + 1);
     //Set body length to 0 before parse
     ctx->body_len = 0;
     if(ctx->body == NULL) return -KHTTP_ERR_OOM;
     http_parser_execute(&ctx->hp, &http_parser_cb, data, total);
-    //LOG_DEBUG("status_code %d\n", ctx->hp.status_code);
-    //LOG_DEBUG("body:\n%s\n", ctx->body);
+    //khttp_debug("status_code %d\n", ctx->hp.status_code);
+    //khttp_debug("body:\n%s\n", ctx->body);
     //FIXME why mark end of data will crash. WTF
     data[total] = 0;
     khttp_dump_message_flow(data, total, 0);
@@ -1583,7 +1578,7 @@ int khttp_perform(khttp_ctx *ctx)
     char port[16];
     sprintf(port, "%d", ctx->port);
     if((res = getaddrinfo(ctx->host, port, &hints, &result)) != 0){
-        LOG_ERROR("khttp DNS lookup failure. getaddrinfo: %s\n", gai_strerror(res));
+        khttp_error("khttp DNS lookup failure. getaddrinfo: %s\n", gai_strerror(res));
         ret = -KHTTP_ERR_DNS;
         goto err;
     }
@@ -1591,10 +1586,10 @@ int khttp_perform(khttp_ctx *ctx)
     ctx->serv_addr.sin_port = htons(ctx->port);
     //char addrstr[100];
     //inet_ntop (result->ai_family, &ctx->serv_addr.sin_addr, addrstr, 100);
-    //LOG_DEBUG("IP:%s\n", addrstr);
+    //khttp_debug("IP:%s\n", addrstr);
     ctx->fd = khttp_socket_create();
     if(ctx->fd < 1){
-        LOG_ERROR("khttp socket create error\n");
+        khttp_error("khttp socket create error\n");
         ret = -KHTTP_ERR_SOCK;
         goto err1;
     }
@@ -1602,20 +1597,20 @@ int khttp_perform(khttp_ctx *ctx)
         if(errno == -EINPROGRESS){
             //sleep(1);
         }else{
-           LOG_ERROR("khttp connect to server error %d(%s)\n", errno, strerror(errno));
+           khttp_error("khttp connect to server error %d(%s)\n", errno, strerror(errno));
            ret = -KHTTP_ERR_CONNECT;
            goto err1;
         }
     }
-    //LOG_DEBUG("khttp connect to server successfully\n");
+    //khttp_debug("khttp connect to server successfully\n");
     freeaddrinfo(result);
     if(ctx->proto == KHTTP_HTTPS){
 #ifdef OPENSSL
         if(khttp_ssl_setup(ctx) != KHTTP_ERR_OK){
-            LOG_ERROR("khttp ssl setup failure\n");
+            khttp_error("khttp ssl setup failure\n");
             return -KHTTP_ERR_SSL;
         }
-        //LOG_DEBUG("khttp setup ssl connection successfully\n");
+        //khttp_debug("khttp setup ssl connection successfully\n");
 #else
         return -KHTTP_ERR_NOT_SUPP;
 #endif
@@ -1624,10 +1619,10 @@ int khttp_perform(khttp_ctx *ctx)
     for(;;)
     {
         if(ctx->hp.status_code == 401){
-            //LOG_DEBUG("Send HTTP authentication response\n");
+            //khttp_debug("Send HTTP authentication response\n");
             //FIXME change to khttp_send_http_auth
             if((res = khttp_send_http_auth(ctx)) != 0){
-                LOG_ERROR("khttp send HTTP authentication response failure %d\n", res);
+                khttp_error("khttp send HTTP authentication response failure %d\n", res);
                 break;
             }
             //FIXME
@@ -1645,9 +1640,9 @@ int khttp_perform(khttp_ctx *ctx)
             }
             //TODO What's next if no form or data to send
         }else{
-            //LOG_DEBUG("Send HTTP request\n");
+            //khttp_debug("Send HTTP request\n");
             if((res = khttp_send_http_req(ctx)) != 0){
-                LOG_ERROR("khttp send HTTP request failure %d\n", res);
+                khttp_error("khttp send HTTP request failure %d\n", res);
                 break;
             }
         }
@@ -1655,17 +1650,17 @@ int khttp_perform(khttp_ctx *ctx)
         khttp_free_header(ctx);
         khttp_free_body(ctx);
         if((res = khttp_recv_http_resp(ctx)) != 0){
-            LOG_ERROR("khttp recv HTTP response failure %d\n", res);
+            khttp_error("khttp recv HTTP response failure %d\n", res);
             ret = res;
             goto err;
         }
-        //LOG_DEBUG("receive HTTP response success\n");
+        //khttp_debug("receive HTTP response success\n");
         switch(ctx->hp.status_code)
         {
             case 401:
                 str = khttp_find_header(ctx, "WWW-Authenticate");
                 if(khttp_parse_auth(ctx, str) != 0) {
-                    LOG_ERROR("khttp parse auth string failure\n");
+                    khttp_error("khttp parse auth string failure\n");
                     goto err;
                 }
                 if(count == 1 || (count == 0 && ctx->auth_type == KHTTP_AUTH_BASIC)){
@@ -1673,15 +1668,15 @@ int khttp_perform(khttp_ctx *ctx)
                 }
                 break;
             case 200:
-                //LOG_INFO("GOT 200 OK count:%d\n", count);
+                //khttp_info("GOT 200 OK count:%d\n", count);
                 if(ctx->cont == 1 && count == 0){
-                    //LOG_INFO("Got 200 OK before send post data/form\n");
+                    //khttp_info("Got 200 OK before send post data/form\n");
                     break;
                 }
                 goto end;
                 break;
             case 100:
-                //LOG_INFO("GOT 100 Continue\n");
+                //khttp_info("GOT 100 Continue\n");
                 if(ctx->cont == 1 && count == 0){
                     break;
                 }
@@ -1694,8 +1689,8 @@ int khttp_perform(khttp_ctx *ctx)
         }
         // Session count
         count ++;
-        //LOG_DEBUG("recv http data\n");
-        //LOG_DEBUG("end\n%s\n", ctx->body);
+        //khttp_debug("recv http data\n");
+        //khttp_debug("end\n%s\n", ctx->body);
         //printf("end\n%s\n", (char *)ctx->body);
     }
 end:
@@ -1725,7 +1720,7 @@ const char * khttp_code_description(int code) {
         case KHTTP_ERR_NO_FILE:     return "KHTTP_ERR_NO_FILE";
         case KHTTP_ERR_FILE_READ:   return "KHTTP_ERR_FILE_READ";
         default:
-            LOG_ERROR("unknown error code %d\n", code);
+            khttp_error("unknown error code %d\n", code);
             return "KHTTP_ERR_UNKNOWN";
     }
 }
