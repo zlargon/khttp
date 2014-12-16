@@ -3,12 +3,49 @@
 #include <errno.h>
 #include <time.h>
 
-int khttp_socket_nonblock(int fd, int enable);
-int khttp_socket_reuseaddr(int fd, int enable);
-int http_socket_sendtimeout(int fd, int timeout);
-int http_socket_recvtimeout(int fd, int timeout);
+static int khttp_socket_nonblock(int fd, int enable);
+static int khttp_socket_reuseaddr(int fd, int enable);
+static int http_socket_sendtimeout(int fd, int timeout);
+static int http_socket_recvtimeout(int fd, int timeout);
 
-struct {
+static void build_decoding_table();
+static void base64_cleanup();
+static char *khttp_base64_encode(const unsigned char *data, size_t input_length, size_t *output_length);
+static char *khttp_base64_decode(const char *data, size_t input_length, size_t *output_length);
+static size_t khttp_file_size(char *file);
+static const char *khttp_auth2str(int type);
+static const char *khttp_type2str(int type);
+static int khttp_body_cb (http_parser *p, const char *buf, size_t len);
+static int khttp_response_status_cb (http_parser *p, const char *buf, size_t len);
+static int khttp_message_complete_cb (http_parser *p);
+static int khttp_header_field_cb (http_parser *p, const char *buf, size_t len);
+static int khttp_header_value_cb (http_parser *p, const char *buf, size_t len);
+static void khttp_dump_header(khttp_ctx *ctx);
+static char *khttp_find_header(khttp_ctx *ctx, const char *header);
+static int khttp_field_copy(char *in, char *out, int len);
+static int khttp_parse_auth(khttp_ctx *ctx, char *value);
+static void khttp_free_header(khttp_ctx *ctx);
+static void khttp_free_body(khttp_ctx *ctx);
+static int khttp_socket_create();
+static int khttp_md5sum(char *input, int len, char *out);
+static void khttp_copy_host(char *in, char *out);
+static void khttp_dump_uri(khttp_ctx *ctx);
+static void khttp_dump_message_flow(char *data, int len, int way);
+static int http_send(khttp_ctx *ctx, void *buf, int len, int timeout);
+static int https_send(khttp_ctx *ctx, void *buf, int len, int timeout);
+static int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout);
+static int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout);
+static int khttp_send_http_req(khttp_ctx *ctx);
+static int khttp_send_form(khttp_ctx *ctx);
+static int khttp_send_http_auth(khttp_ctx *ctx);
+static int khttp_recv_http_resp(khttp_ctx *ctx);
+
+#ifdef OPENSSL
+static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store);
+static int khttp_ssl_setup(khttp_ctx *ctx);
+#endif
+
+static const struct {
     char text[8];
 }method_type[]={
     {"GET"},
@@ -17,13 +54,14 @@ struct {
     {"DELETE"}
 };
 
-struct {
+static const struct {
     char text[8];
 }auth_type[]={
     {"None"},
     {"Digest"},
     {"Basic"}
 };
+
 static char base64_encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
                                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
@@ -35,7 +73,7 @@ static char base64_encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 static char *base64_decoding_table = NULL;
 static int mod_table[] = {0, 2, 1};
 
-void build_decoding_table() {
+static void build_decoding_table() {
     if(base64_decoding_table != NULL) return;
     base64_decoding_table = malloc(256);
     int i;
@@ -43,14 +81,14 @@ void build_decoding_table() {
         base64_decoding_table[(unsigned char) base64_encoding_table[i]] = i;
 }
 
-void base64_cleanup() {
+static void base64_cleanup() {
     if(base64_decoding_table){
         free(base64_decoding_table);
         base64_decoding_table = NULL;
     }
 }
 
-char *khttp_base64_encode(const unsigned char *data,
+static char *khttp_base64_encode(const unsigned char *data,
                     size_t input_length,
                     size_t *output_length) {
 
@@ -79,7 +117,7 @@ char *khttp_base64_encode(const unsigned char *data,
     encoded_data[*output_length] = '\0';
     return encoded_data;
 }
-char *khttp_base64_decode(const char *data,
+static char *khttp_base64_decode(const char *data,
                     size_t input_length,
                     size_t *output_length) {
     if (base64_decoding_table == NULL) build_decoding_table();
@@ -126,16 +164,16 @@ static size_t khttp_file_size(char *file)
     return len;
 }
 
-static char *khttp_auth2str(int type)
+static const char *khttp_auth2str(int type)
 {
     return auth_type[type].text;
 }
-static char *khttp_type2str(int type)
+static const char *khttp_type2str(int type)
 {
     return method_type[type].text;
 }
 
-int khttp_body_cb (http_parser *p, const char *buf, size_t len)
+static int khttp_body_cb (http_parser *p, const char *buf, size_t len)
 {
     //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
@@ -150,7 +188,7 @@ int khttp_body_cb (http_parser *p, const char *buf, size_t len)
     return 0;
 }
 
-int khttp_response_status_cb (http_parser *p, const char *buf, size_t len)
+static int khttp_response_status_cb (http_parser *p, const char *buf, size_t len)
 {
     //LOG_DEBUG("\n");
 #ifndef KHTTP_DEBUG
@@ -166,7 +204,7 @@ int khttp_response_status_cb (http_parser *p, const char *buf, size_t len)
 #endif
 }
 
-int khttp_message_complete_cb (http_parser *p)
+static int khttp_message_complete_cb (http_parser *p)
 {
     //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
@@ -174,7 +212,7 @@ int khttp_message_complete_cb (http_parser *p)
     return 0;
 }
 
-int khttp_header_field_cb (http_parser *p, const char *buf, size_t len)
+static int khttp_header_field_cb (http_parser *p, const char *buf, size_t len)
 {
     //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
@@ -189,7 +227,7 @@ int khttp_header_field_cb (http_parser *p, const char *buf, size_t len)
     return 0;
 }
 
-int khttp_header_value_cb (http_parser *p, const char *buf, size_t len)
+static int khttp_header_value_cb (http_parser *p, const char *buf, size_t len)
 {
     //LOG_DEBUG("\n");
     khttp_ctx *ctx = p->data;
@@ -205,7 +243,7 @@ int khttp_header_value_cb (http_parser *p, const char *buf, size_t len)
     return 0;
 }
 
-void khttp_dump_header(khttp_ctx *ctx)
+static void khttp_dump_header(khttp_ctx *ctx)
 {
     if(!ctx) return;
     int i = 0;
@@ -214,7 +252,7 @@ void khttp_dump_header(khttp_ctx *ctx)
     }
 }
 
-char *khttp_find_header(khttp_ctx *ctx, const char *header)
+static char *khttp_find_header(khttp_ctx *ctx, const char *header)
 {
     if(!ctx) return NULL;
     int i = 0;
@@ -227,7 +265,7 @@ char *khttp_find_header(khttp_ctx *ctx, const char *header)
     return NULL;
 }
 
-int khttp_field_copy(char *in, char *out, int len)
+static int khttp_field_copy(char *in, char *out, int len)
 {
     if(in == NULL || out == NULL) return -1;
     int i = 0;
@@ -242,7 +280,7 @@ int khttp_field_copy(char *in, char *out, int len)
     return 0;
 }
 
-int khttp_parse_auth(khttp_ctx *ctx, char *value)
+static int khttp_parse_auth(khttp_ctx *ctx, char *value)
 {
     char *realm;
     char *nonce;
@@ -274,7 +312,7 @@ int khttp_parse_auth(khttp_ctx *ctx, char *value)
     return 0;
 }
 
-void khttp_free_header(khttp_ctx *ctx)
+static void khttp_free_header(khttp_ctx *ctx)
 {
     if(!ctx) return;
     int i = 0;
@@ -291,7 +329,7 @@ void khttp_free_header(khttp_ctx *ctx)
     ctx->header_count = 0;
 }
 
-void khttp_free_body(khttp_ctx *ctx)
+static void khttp_free_body(khttp_ctx *ctx)
 {
     if(ctx->body){
         free(ctx->body);
@@ -387,7 +425,7 @@ void khttp_destroy(khttp_ctx *ctx)
     }
 }
 
-int khttp_socket_create()
+static int khttp_socket_create()
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0){
@@ -402,7 +440,7 @@ int khttp_socket_create()
     return fd;
 }
 
-int khttp_socket_nonblock(int fd, int enable)
+static int khttp_socket_nonblock(int fd, int enable)
 {
     unsigned long on = enable;
     int ret = ioctl(fd, FIONBIO, &on);
@@ -412,7 +450,7 @@ int khttp_socket_nonblock(int fd, int enable)
     return ret;
 }
 
-int khttp_socket_reuseaddr(int fd, int enable)
+static int khttp_socket_reuseaddr(int fd, int enable)
 {
     int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable, sizeof(enable));
     if(ret != 0){
@@ -421,7 +459,7 @@ int khttp_socket_reuseaddr(int fd, int enable)
     return ret;
 }
 
-int http_socket_sendtimeout(int fd, int timeout)
+static int http_socket_sendtimeout(int fd, int timeout)
 {
     struct timeval tv;
     tv.tv_sec = timeout;
@@ -433,7 +471,7 @@ int http_socket_sendtimeout(int fd, int timeout)
     return ret;
 }
 
-int http_socket_recvtimeout(int fd, int timeout)
+static int http_socket_recvtimeout(int fd, int timeout)
 {
     struct timeval tv;
     tv.tv_sec = timeout;
@@ -445,7 +483,7 @@ int http_socket_recvtimeout(int fd, int timeout)
     return ret;
 }
 
-int khttp_md5sum(char *input, int len, char *out)
+static int khttp_md5sum(char *input, int len, char *out)
 {
     int ret = 0, i = 0;
 #ifdef OPENSSL
@@ -479,7 +517,8 @@ int khttp_set_method(khttp_ctx *ctx, int method)
     ctx->method = method;
     return KHTTP_ERR_OK;
 }
-void khttp_copy_host(char *in, char *out)
+
+static void khttp_copy_host(char *in, char *out)
 {
     int i = 0;
     for(i=0 ; i<strlen(in) ; i++) {
@@ -488,7 +527,7 @@ void khttp_copy_host(char *in, char *out)
     }
 }
 
-void khttp_dump_uri(khttp_ctx *ctx)
+static void khttp_dump_uri(khttp_ctx *ctx)
 {
     printf("======================\n");
     printf("host: %s\n", ctx->host);
@@ -496,7 +535,7 @@ void khttp_dump_uri(khttp_ctx *ctx)
     printf("path: %s\n", ctx->path);
 }
 
-void khttp_dump_message_flow(char *data, int len, int way)
+static void khttp_dump_message_flow(char *data, int len, int way)
 {
 #ifdef KHTTP_DEBUG_SESS
     //data[len]  = 0;
@@ -512,7 +551,7 @@ void khttp_dump_message_flow(char *data, int len, int way)
 #endif
 }
 
-int http_send(khttp_ctx *ctx, void *buf, int len, int timeout)
+static int http_send(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
     struct timeval tv;
     tv.tv_sec = timeout / 1000;
@@ -542,7 +581,8 @@ int http_send(khttp_ctx *ctx, void *buf, int len, int timeout)
     return KHTTP_ERR_OK;
 }
 #ifdef OPENSSL
-int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
+
+static int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
     int sent = 0;
     char *head = buf;
@@ -577,7 +617,8 @@ int https_send(khttp_ctx *ctx, void *buf, int len, int timeout)
     return ret;
 }
 #endif
-int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
+
+static int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
     int ret = KHTTP_ERR_OK;
     struct timeval tv;
@@ -603,7 +644,8 @@ int http_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
     return ret;
 }
 #ifdef OPENSSL
-int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
+
+static int https_recv(khttp_ctx *ctx, void *buf, int len, int timeout)
 {
     if(ctx == NULL || buf == NULL || len <= 0) return -KHTTP_ERR_PARAM;
     int ret = KHTTP_ERR_OK;
@@ -647,6 +689,7 @@ end:
     return ret;
 }
 #endif
+
 int khttp_set_uri(khttp_ctx *ctx, char *uri)
 {
     char *head = uri;
@@ -718,8 +761,7 @@ static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store)
     return ok;
 }
 
-
-int khttp_ssl_setup(khttp_ctx *ctx)
+static int khttp_ssl_setup(khttp_ctx *ctx)
 {
     int ret = 0;
     SSL_load_error_strings();
@@ -840,6 +882,7 @@ int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw)
     return KHTTP_ERR_OK;
 }
 #endif
+
 int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, int auth_type)
 {
     if(ctx == NULL || username == NULL || password == NULL) return -KHTTP_ERR_PARAM;
@@ -926,7 +969,7 @@ int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type)
     return KHTTP_ERR_OK;
 }
 
-int khttp_send_http_req(khttp_ctx *ctx)
+static int khttp_send_http_req(khttp_ctx *ctx)
 {
     char resp_str[KHTTP_RESP_LEN];
     //FIXME change to dynamic size
@@ -1124,7 +1167,8 @@ int khttp_send_http_req(khttp_ctx *ctx)
     free(req);
     return 0;
 }
-int khttp_send_form(khttp_ctx *ctx)
+
+static int khttp_send_form(khttp_ctx *ctx)
 {
     if(ctx->form){
         //LOG_DEBUG("length: %lu\n%s",ctx->form_len, ctx->form);
@@ -1140,7 +1184,8 @@ int khttp_send_form(khttp_ctx *ctx)
     }
     return -KHTTP_ERR_OK;
 }
-int khttp_send_http_auth(khttp_ctx *ctx)
+
+static int khttp_send_http_auth(khttp_ctx *ctx)
 {
     char ha1[KHTTP_NONCE_LEN];
     char ha2[KHTTP_NONCE_LEN];
@@ -1454,7 +1499,7 @@ int khttp_send_http_auth(khttp_ctx *ctx)
     return 0;
 }
 
-int khttp_recv_http_resp(khttp_ctx *ctx)
+static int khttp_recv_http_resp(khttp_ctx *ctx)
 {
     char buf[KHTTP_NETWORK_BUF];
     memset(buf, 0, KHTTP_NETWORK_BUF);
