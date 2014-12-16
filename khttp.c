@@ -1,5 +1,4 @@
 #include "khttp.h"
-#include "log.h"
 #include <errno.h>
 #include <time.h>
 
@@ -47,6 +46,7 @@ static int khttp_recv_http_resp(khttp_ctx *ctx);
 #define khttp_warn(fmt, agrs...) khttp_log(KHTTP_LOG_WARN, __LINE__, __func__, fmt, ##agrs)
 #define khttp_error(fmt, agrs...) khttp_log(KHTTP_LOG_ERROR, __LINE__, __func__, fmt, ##agrs)
 static int khttp_log(const char * level, int line, const char * func, const char * format, ...);
+static KHTTP_Log_Callback_Function khttp_log_callback = NULL;
 
 #ifdef OPENSSL
 static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store);
@@ -1734,16 +1734,15 @@ static int khttp_log(const char * level, int line, const char * func, const char
     vsnprintf(message, KHTTP_MESSAGE_MAX_LEN, format, args);
     va_end(args);
 
-    // TODO: invoke log callback function
-    if (level == KHTTP_LOG_DEBUG) {
-        LOG_DEBUG(message);
-    } else if (level == KHTTP_LOG_INFO) {
-        LOG_INFO(message);
-    } else if (level == KHTTP_LOG_WARN) {
-        LOG_WARN(message);
-    } else if (level == KHTTP_LOG_ERROR) {
-        LOG_ERROR(message);
+    // invoke log callback function
+    if (khttp_log_callback != NULL) {
+        khttp_log_callback(__FILE__, "khttp", level, line, func, message);
     }
 
+    return 0;
+}
+
+int khttp_set_log_callback(KHTTP_Log_Callback_Function callback) {
+    khttp_log_callback = callback;
     return 0;
 }

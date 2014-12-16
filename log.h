@@ -9,7 +9,7 @@
 
 #define LOG_MAX_CHAR    2048
 
-void log_print(int level, char *file, int line, char *fmt, ...);
+void log_print(int level, const char *file, int line, const char *fmt, ...);
 #define LOG(level, fmt, args...) log_print(level, __FILE__,__LINE__, fmt, ##args)
 
 #define LOG_DEBUG(fmt, args...) log_print(DEBUG, __FILE__,__LINE__, fmt, ##args)

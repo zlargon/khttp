@@ -68,8 +68,17 @@ void test_post_form_digest()
     khttp_destroy(ctx);
 }
 
+int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
+    if (strcmp(level, "DEBUG") == 0)     log_print(DEBUG, file, line, message);
+    else if (strcmp(level, "INFO") == 0) log_print(INFO,  file, line, message);
+    else if (strcmp(level, "WARN") == 0) log_print(WARN,  file, line, message);
+    else                                 log_print(ERROR, file, line, message);
+    return 0;
+}
+
 int main()
 {
+    khttp_set_log_callback(log_callback);
     test_post_form();
     test_post_file();
     test_post_form_file();

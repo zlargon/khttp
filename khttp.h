@@ -64,6 +64,7 @@ static const char * KHTTP_LOG_DEBUG = "DEBUG";
 static const char * KHTTP_LOG_INFO  = "INFO";
 static const char * KHTTP_LOG_WARN  = "WARN";
 static const char * KHTTP_LOG_ERROR = "ERROR";
+typedef int (* KHTTP_Log_Callback_Function)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message);
 
 enum{
     KHTTP_FORM_STRING,
@@ -177,4 +178,5 @@ int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, 
 int khttp_set_post_data(khttp_ctx *ctx, char *data);
 int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type);
 const char * khttp_code_description(int code);
+int khttp_set_log_callback(KHTTP_Log_Callback_Function callback);
 #endif

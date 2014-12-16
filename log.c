@@ -75,7 +75,7 @@ int log_close_file()
     return 0;
 }
 
-void log_print(int level, char *file, int line, char *fmt, ...)
+void log_print(int level, const char *file, int line, const char *fmt, ...)
 {
     char buf[LOG_MAX_CHAR];
     va_list vl;
@@ -83,7 +83,7 @@ void log_print(int level, char *file, int line, char *fmt, ...)
     vsnprintf(buf, sizeof(buf),fmt, vl);
     va_end(vl);
     if(log2screen){
-		if(level < log_level) return;
+        if(level < log_level) return;
 #ifdef COLOR_LOG
         fprintf(stderr, "%16s| %s ( %s:%d ) %s", print_lv_text(level, 1), print_time(), file, line, buf);
         fprintf(stderr, "\033[0m");
@@ -92,7 +92,7 @@ void log_print(int level, char *file, int line, char *fmt, ...)
 #endif
     }
     if(log2file && log_fp){
-		if(level < log_level) return;
+        if(level < log_level) return;
         fprintf(log_fp, "%s %s ( %s:%d ) %s", print_lv_text(level, 0), print_time(), file, line, buf);
     }
 }
