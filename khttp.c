@@ -1653,3 +1653,26 @@ err:
     //khttp_dump_header(ctx);
     return ret;
 }
+
+const char * khttp_code_description(int code) {
+    switch (code) {
+        case KHTTP_ERR_OK:          return "KHTTP_ERR_OK";
+        case KHTTP_ERR_TIMEOUT:     return "KHTTP_ERR_TIMEOUT";
+        case KHTTP_ERR_DNS:         return "KHTTP_ERR_DNS";
+        case KHTTP_ERR_SOCK:        return "KHTTP_ERR_SOCK";
+        case KHTTP_ERR_SSL:         return "KHTTP_ERR_SSL";
+        case KHTTP_ERR_OOM:         return "KHTTP_ERR_OOM";
+        case KHTTP_ERR_SEND:        return "KHTTP_ERR_SEND";
+        case KHTTP_ERR_RECV:        return "KHTTP_ERR_RECV";
+        case KHTTP_ERR_PARAM:       return "KHTTP_ERR_PARAM";
+        case KHTTP_ERR_CONNECT:     return "KHTTP_ERR_CONNECT";
+        case KHTTP_ERR_DISCONN:     return "KHTTP_ERR_DISCONN";
+        case KHTTP_ERR_NO_FD:       return "KHTTP_ERR_NO_FD";
+        case KHTTP_ERR_NOT_SUPP:    return "KHTTP_ERR_NOT_SUPP";
+        case KHTTP_ERR_NO_FILE:     return "KHTTP_ERR_NO_FILE";
+        case KHTTP_ERR_FILE_READ:   return "KHTTP_ERR_FILE_READ";
+        default:
+            LOG_ERROR("unknown error code %d\n", code);
+            return "KHTTP_ERR_UNKNOWN";
+    }
+}

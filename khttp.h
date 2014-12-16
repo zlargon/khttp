@@ -170,4 +170,5 @@ int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw);
 int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, int auth_type);
 int khttp_set_post_data(khttp_ctx *ctx, char *data);
 int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type);
+const char * khttp_code_description(int code);
 #endif
