@@ -59,6 +59,12 @@
 //#define KHTTP_DEBUG_SESS    1
 //#define KHTTP_DEBUG_FLOW    1
 
+// KHTTP Log Level
+static const char * KHTTP_LOG_DEBUG = "DEBUG";
+static const char * KHTTP_LOG_INFO  = "INFO";
+static const char * KHTTP_LOG_WARN  = "WARN";
+static const char * KHTTP_LOG_ERROR = "ERROR";
+
 enum{
     KHTTP_FORM_STRING,
     KHTTP_FORM_FILE

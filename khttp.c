@@ -40,6 +40,14 @@ static int khttp_send_form(khttp_ctx *ctx);
 static int khttp_send_http_auth(khttp_ctx *ctx);
 static int khttp_recv_http_resp(khttp_ctx *ctx);
 
+// KHTTP Log
+#define KHTTP_MESSAGE_MAX_LEN  2048
+#define khttp_debug(fmt, agrs...) khttp_log(KHTTP_LOG_DEBUG, __LINE__, __func__, fmt, ##agrs)
+#define khttp_info(fmt, agrs...) khttp_log(KHTTP_LOG_INFO, __LINE__, __func__, fmt, ##agrs)
+#define khttp_warn(fmt, agrs...) khttp_log(KHTTP_LOG_WARN, __LINE__, __func__, fmt, ##agrs)
+#define khttp_error(fmt, agrs...) khttp_log(KHTTP_LOG_ERROR, __LINE__, __func__, fmt, ##agrs)
+static int khttp_log(const char * level, int line, const char * func, const char * format, ...);
+
 #ifdef OPENSSL
 static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store);
 static int khttp_ssl_setup(khttp_ctx *ctx);
@@ -1720,4 +1728,27 @@ const char * khttp_code_description(int code) {
             LOG_ERROR("unknown error code %d\n", code);
             return "KHTTP_ERR_UNKNOWN";
     }
+}
+
+static int khttp_log(const char * level, int line, const char * func, const char * format, ...) {
+    char message[KHTTP_MESSAGE_MAX_LEN] = {0};
+
+    // create message by va_list
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message, KHTTP_MESSAGE_MAX_LEN, format, args);
+    va_end(args);
+
+    // TODO: invoke log callback function
+    if (level == KHTTP_LOG_DEBUG) {
+        LOG_DEBUG(message);
+    } else if (level == KHTTP_LOG_INFO) {
+        LOG_INFO(message);
+    } else if (level == KHTTP_LOG_WARN) {
+        LOG_WARN(message);
+    } else if (level == KHTTP_LOG_ERROR) {
+        LOG_ERROR(message);
+    }
+
+    return 0;
 }
