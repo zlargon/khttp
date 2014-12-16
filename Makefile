@@ -1,14 +1,13 @@
-.PHONY: static shared test
+.PHONY: static test
 
 LIB_PREFIX=libkhttp
 
 OBJS=http_parser.o log.o khttp.o
 
-CFLAGS=-fPIC -O2 -g -Werror -DCOLOR_LOG -DOPENSSL
-#CFLAGS=-fPIC -O2 -g -Werror -DCOLOR_LOG
+CFLAGS=-fPIC -O2 -g -DCOLOR_LOG -DOPENSSL
 LDFLAGS=-lssl -lcrypto
 
-all: shared static test
+all: static test
 
 static: $(OBJS)
 	$(AR) rcs $(LIB_PREFIX).a $(OBJS)

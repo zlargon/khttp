@@ -742,7 +742,7 @@ int khttp_ssl_setup(khttp_ctx *ctx)
             LOG_ERROR("SSL setup request method TLSv1 failure\n");
             return -KHTTP_ERR_SSL;
         }
-#ifndef __MAC__
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
     }else if(ctx->ssl_method == KHTTP_METHOD_TLSV1_1){
         if( (ctx->ssl_ctx = SSL_CTX_new(TLSv1_1_client_method())) == NULL) {
             LOG_ERROR("SSL setup request method TLSv1_1 failure\n");
