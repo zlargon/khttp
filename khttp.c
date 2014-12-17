@@ -1,6 +1,7 @@
 #include "khttp.h"
 #include <errno.h>
 #include <time.h>
+#include <stdarg.h>
 
 static int khttp_socket_nonblock(int fd, int enable);
 static int khttp_socket_reuseaddr(int fd, int enable);
@@ -488,7 +489,7 @@ static int http_socket_recvtimeout(int fd, int timeout)
 
 static int khttp_md5sum(char *input, int len, char *out)
 {
-    int ret = 0, i = 0;
+    int ret = 0;
 #ifdef OPENSSL
     MD5_CTX ctx;
     char buf[3] = {'\0'};
@@ -499,8 +500,9 @@ static int khttp_md5sum(char *input, int len, char *out)
     MD5_Update(&ctx, input, len);
     MD5_Final(md5, &ctx);
     out[0] = '\0';
-    for(i=0;i<MD5_DIGEST_LENGTH;i++)
-    {
+
+    int i;
+    for(i = 0; i < MD5_DIGEST_LENGTH; i++) {
         sprintf(buf, "%02x", md5[i]);
         strcat(out, buf);
     }
