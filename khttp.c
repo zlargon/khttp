@@ -3,15 +3,8 @@
 #include <time.h>
 #include <stdarg.h>
 
-static int khttp_socket_nonblock(int fd, int enable);
 static int khttp_socket_reuseaddr(int fd, int enable);
-static int http_socket_sendtimeout(int fd, int timeout);
-static int http_socket_recvtimeout(int fd, int timeout);
-
-static void build_decoding_table();
-static void base64_cleanup();
 static char *khttp_base64_encode(const unsigned char *data, size_t input_length, size_t *output_length);
-static char *khttp_base64_decode(const char *data, size_t input_length, size_t *output_length);
 static size_t khttp_file_size(char *file);
 static const char *khttp_auth2str(int type);
 static const char *khttp_type2str(int type);
@@ -20,7 +13,6 @@ static int khttp_response_status_cb (http_parser *p, const char *buf, size_t len
 static int khttp_message_complete_cb (http_parser *p);
 static int khttp_header_field_cb (http_parser *p, const char *buf, size_t len);
 static int khttp_header_value_cb (http_parser *p, const char *buf, size_t len);
-static void khttp_dump_header(khttp_ctx *ctx);
 static char *khttp_find_header(khttp_ctx *ctx, const char *header);
 static int khttp_field_copy(char *in, char *out, int len);
 static int khttp_parse_auth(khttp_ctx *ctx, char *value);
@@ -29,7 +21,6 @@ static void khttp_free_body(khttp_ctx *ctx);
 static int khttp_socket_create();
 static int khttp_md5sum(char *input, int len, char *out);
 static void khttp_copy_host(char *in, char *out);
-static void khttp_dump_uri(khttp_ctx *ctx);
 static void khttp_dump_message_flow(char *data, int len, int way);
 static int http_send(khttp_ctx *ctx, void *buf, int len, int timeout);
 static int https_send(khttp_ctx *ctx, void *buf, int len, int timeout);
@@ -79,23 +70,7 @@ static char base64_encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
                                 'w', 'x', 'y', 'z', '0', '1', '2', '3',
                                 '4', '5', '6', '7', '8', '9', '+', '/'};
-static char *base64_decoding_table = NULL;
 static int mod_table[] = {0, 2, 1};
-
-static void build_decoding_table() {
-    if(base64_decoding_table != NULL) return;
-    base64_decoding_table = malloc(256);
-    int i;
-    for (i = 0; i < 64; i++)
-        base64_decoding_table[(unsigned char) base64_encoding_table[i]] = i;
-}
-
-static void base64_cleanup() {
-    if(base64_decoding_table){
-        free(base64_decoding_table);
-        base64_decoding_table = NULL;
-    }
-}
 
 static char *khttp_base64_encode(const unsigned char *data,
                     size_t input_length,
@@ -125,39 +100,6 @@ static char *khttp_base64_encode(const unsigned char *data,
         encoded_data[*output_length - 1 - i] = '=';
     encoded_data[*output_length] = '\0';
     return encoded_data;
-}
-static char *khttp_base64_decode(const char *data,
-                    size_t input_length,
-                    size_t *output_length) {
-    if (base64_decoding_table == NULL) build_decoding_table();
-    unsigned char *ptr = (unsigned char *)data;
-    if (input_length % 4 != 0) return NULL;
-
-    *output_length = input_length / 4 * 3;
-    if (data[input_length - 1] == '=') (*output_length)--;
-    if (data[input_length - 2] == '=') (*output_length)--;
-
-    char *decoded_data = malloc(*output_length + 1);
-    memset(decoded_data , 0, *output_length +1);
-    if (decoded_data == NULL) return NULL;
-    int i,j;
-    for (i = 0, j = 0; i < input_length;) {
-
-        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
-        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
-        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
-        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : base64_decoding_table[ptr[i++]];
-
-        uint32_t triple = (sextet_a << 3 * 6)
-        + (sextet_b << 2 * 6)
-        + (sextet_c << 1 * 6)
-        + (sextet_d << 0 * 6);
-
-        if (j < *output_length) decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
-        if (j < *output_length) decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
-        if (j < *output_length) decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
-    }
-    return decoded_data;
 }
 
 static size_t khttp_file_size(char *file)
@@ -245,15 +187,6 @@ static int khttp_header_value_cb (http_parser *p, const char *buf, size_t len)
         ctx->header_count ++;
     }
     return 0;
-}
-
-static void khttp_dump_header(khttp_ctx *ctx)
-{
-    if(!ctx) return;
-    int i = 0;
-    for(i = 0; i < ctx->header_count ; i++){
-        printf("%02d %20s     %s\n", i , ctx->header_field[i], ctx->header_value[i]);
-    }
 }
 
 static char *khttp_find_header(khttp_ctx *ctx, const char *header)
@@ -437,21 +370,8 @@ static int khttp_socket_create()
         return fd;
     }
     //Default enable nonblock / reuseaddr and set send / recv timeout
-    //khttp_socket_nonblock(fd, 1);
     khttp_socket_reuseaddr(fd, 1);
-    //http_socket_sendtimeout(fd, KHTTP_SEND_TIMEO);
-    //http_socket_recvtimeout(fd, KHTTP_RECV_TIMEO);
     return fd;
-}
-
-static int khttp_socket_nonblock(int fd, int enable)
-{
-    unsigned long on = enable;
-    int ret = ioctl(fd, FIONBIO, &on);
-    if(ret != 0){
-        khttp_warn("khttp set socket nonblock failure %d(%s)\n", errno, strerror(errno));
-    }
-    return ret;
 }
 
 static int khttp_socket_reuseaddr(int fd, int enable)
@@ -459,30 +379,6 @@ static int khttp_socket_reuseaddr(int fd, int enable)
     int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable, sizeof(enable));
     if(ret != 0){
         khttp_warn("khttp set socket reuseaddr failure %d(%s)\n", errno, strerror(errno));
-    }
-    return ret;
-}
-
-static int http_socket_sendtimeout(int fd, int timeout)
-{
-    struct timeval tv;
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
-    int ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&tv, sizeof(tv));
-    if(ret != 0){
-        khttp_warn("khttp set socket send timeout failure %d(%s)\n", errno, strerror(errno));
-    }
-    return ret;
-}
-
-static int http_socket_recvtimeout(int fd, int timeout)
-{
-    struct timeval tv;
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
-    int ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
-    if(ret != 0){
-        khttp_warn("khttp set socket recv timeout failure %d(%s)\n", errno, strerror(errno));
     }
     return ret;
 }
@@ -530,14 +426,6 @@ static void khttp_copy_host(char *in, char *out)
         if(in[i] == ':' || in[i] == '/' || in[i] == '\0') break;
         out[i] = in[i];
     }
-}
-
-static void khttp_dump_uri(khttp_ctx *ctx)
-{
-    printf("======================\n");
-    printf("host: %s\n", ctx->host);
-    printf("port: %d\n", ctx->port);
-    printf("path: %s\n", ctx->path);
 }
 
 static void khttp_dump_message_flow(char *data, int len, int way)
@@ -1700,7 +1588,6 @@ end:
 err1:
     freeaddrinfo(result);
 err:
-    //khttp_dump_header(ctx);
     return ret;
 }
 
