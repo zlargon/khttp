@@ -1615,6 +1615,10 @@ const char * khttp_code_description(int code) {
 }
 
 static int khttp_log(const char * level, int line, const char * func, const char * format, ...) {
+    if (khttp_log_callback == NULL) {
+        return -1;
+    }
+
     char message[KHTTP_MESSAGE_MAX_LEN] = {0};
 
     // create message by va_list
@@ -1624,10 +1628,7 @@ static int khttp_log(const char * level, int line, const char * func, const char
     va_end(args);
 
     // invoke log callback function
-    if (khttp_log_callback != NULL) {
-        khttp_log_callback(__FILE__, "KHTTP", level, line, func, message);
-    }
-
+    khttp_log_callback(__FILE__, "KHTTP", level, line, func, message);
     return 0;
 }
 
