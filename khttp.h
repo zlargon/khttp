@@ -59,8 +59,6 @@
 //#define KHTTP_DEBUG_SESS    1
 //#define KHTTP_DEBUG_FLOW    1
 
-typedef int (* KHTTP_Log_Callback_Function)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message);
-
 enum{
     KHTTP_FORM_STRING,
     KHTTP_FORM_FILE
@@ -173,5 +171,5 @@ int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, 
 int khttp_set_post_data(khttp_ctx *ctx, char *data);
 int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type);
 const char * khttp_code_description(int code);
-int khttp_set_log_callback(KHTTP_Log_Callback_Function callback);
+int khttp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
 #endif

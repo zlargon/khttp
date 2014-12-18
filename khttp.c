@@ -38,7 +38,7 @@ static int khttp_recv_http_resp(khttp_ctx *ctx);
 #define khttp_warn(fmt,  agrs...) khttp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
 #define khttp_error(fmt, agrs...) khttp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 static int khttp_log(const char * level, int line, const char * func, const char * format, ...);
-static KHTTP_Log_Callback_Function khttp_log_callback = NULL;
+static int (* khttp_log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) = NULL;
 
 #ifdef OPENSSL
 static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store);
@@ -1632,7 +1632,7 @@ static int khttp_log(const char * level, int line, const char * func, const char
     return 0;
 }
 
-int khttp_set_log_callback(KHTTP_Log_Callback_Function callback) {
+int khttp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
     khttp_log_callback = callback;
     return 0;
 }
