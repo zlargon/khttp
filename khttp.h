@@ -59,11 +59,6 @@
 //#define KHTTP_DEBUG_SESS    1
 //#define KHTTP_DEBUG_FLOW    1
 
-// KHTTP Log Level
-static const char * KHTTP_LOG_DEBUG = "DEBUG";
-static const char * KHTTP_LOG_INFO  = "INFO";
-static const char * KHTTP_LOG_WARN  = "WARN";
-static const char * KHTTP_LOG_ERROR = "ERROR";
 typedef int (* KHTTP_Log_Callback_Function)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message);
 
 enum{

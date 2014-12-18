@@ -33,10 +33,10 @@ static int khttp_recv_http_resp(khttp_ctx *ctx);
 
 // KHTTP Log
 #define KHTTP_MESSAGE_MAX_LEN  2048
-#define khttp_debug(fmt, agrs...) khttp_log(KHTTP_LOG_DEBUG, __LINE__, __func__, fmt, ##agrs)
-#define khttp_info(fmt, agrs...) khttp_log(KHTTP_LOG_INFO, __LINE__, __func__, fmt, ##agrs)
-#define khttp_warn(fmt, agrs...) khttp_log(KHTTP_LOG_WARN, __LINE__, __func__, fmt, ##agrs)
-#define khttp_error(fmt, agrs...) khttp_log(KHTTP_LOG_ERROR, __LINE__, __func__, fmt, ##agrs)
+#define khttp_debug(fmt, agrs...) khttp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
+#define khttp_info(fmt,  agrs...) khttp_log("INFO",  __LINE__, __func__, fmt, ##agrs)
+#define khttp_warn(fmt,  agrs...) khttp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
+#define khttp_error(fmt, agrs...) khttp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 static int khttp_log(const char * level, int line, const char * func, const char * format, ...);
 static KHTTP_Log_Callback_Function khttp_log_callback = NULL;
 
@@ -1625,7 +1625,7 @@ static int khttp_log(const char * level, int line, const char * func, const char
 
     // invoke log callback function
     if (khttp_log_callback != NULL) {
-        khttp_log_callback(__FILE__, "khttp", level, line, func, message);
+        khttp_log_callback(__FILE__, "KHTTP", level, line, func, message);
     }
 
     return 0;
