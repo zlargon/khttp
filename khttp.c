@@ -721,32 +721,63 @@ static int khttp_ssl_setup(khttp_ctx *ctx)
         khttp_error("set SSL fd failure %d\n", ret);
         return -KHTTP_ERR_SSL;
     }
-    if((ret = SSL_connect(ctx->ssl)) != 1) {
-        char error_buffer[256];
-        khttp_error("SSL_connect failure %d\n", ret);
-        ret = SSL_get_error(ctx->ssl, ret);
-        if(SSL_ERROR_WANT_READ == ret){
-            return KHTTP_ERR_OK;
-        }else if(SSL_ERROR_WANT_WRITE == ret) {
-            return KHTTP_ERR_OK;
-        }
-        switch(ret){
-            case 0x1470E086:
-            case 0x14090086:
-                ret = SSL_get_verify_result(ctx->ssl);
-                if(ret != X509_V_OK){
-                    snprintf(error_buffer, sizeof(error_buffer),
-                            "SSL certificate problem: %s",
-                            X509_verify_cert_error_string(ret));
+
+    /* non-blocking SSL connect */
+    int flags = fcntl(ctx->fd, F_GETFL);            // save fd status flags
+    fcntl(ctx->fd, F_SETFL, flags | O_NONBLOCK);    // add non-blocking flag to fd
+
+    // http://stackoverflow.com/questions/18127031/how-to-set-ssl-connect-on-non-blocking-socket-with-select-on-linux-platform
+    while ((ret = SSL_connect(ctx->ssl)) != 1) {
+        int error = SSL_get_error(ctx->ssl, ret);
+        switch (error) {
+
+            // 1. Read and Write
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE: {
+
+                fd_set fs;
+                FD_ZERO(&fs);
+                FD_SET(ctx->fd, &fs);
+
+                struct timeval tv = {
+                    .tv_sec = 5     // 5 seconds timeout
+                };
+
+                int select_ret = select(ctx->fd + 1, &fs, NULL, NULL, &tv);
+                if (select_ret <= 0) {
+                    khttp_error("SSL_connect select timeout or failed, ret = %d\n", select_ret);
+                    return -KHTTP_ERR_SSL;
                 }
-            default:
-                ERR_error_string_n(ret, error_buffer, sizeof(error_buffer));
+
+                /* SSL_connect is still in progress */
+                /* invoke SSL_connect function again */
                 break;
+            }
+
+            // 2. Certificate Error
+            case 0x1470E086:    // SSL2_SET_CERTIFICATE
+            case 0x14090086: {  // SSL3_GET_SERVER_CERTIFICATE
+                long cert_err = SSL_get_verify_result(ctx->ssl);
+                if (cert_err != X509_V_OK) {
+                    khttp_error("SSL certificate problem: %s (%ld)\n", X509_verify_cert_error_string(cert_err), cert_err);
+                }
+                return -KHTTP_ERR_SSL;
+            }
+
+            // 3. the others error
+            default: {
+                char error_string[256] = {0};
+                ERR_error_string_n(error, error_string, sizeof(error_string));
+                khttp_error("SSL_connect error: %s (%d)\n", error_string, error);
+                return -KHTTP_ERR_SSL;
+            }
         }
-        khttp_error("SSL_get_error failure %d %s\n", ret, error_buffer);
-        return -KHTTP_ERR_SSL;//TODO
     }
-    //khttp_debug("Connect to SSL server success\n");
+
+    // set fd back to origin status flags
+    fcntl(ctx->fd, F_SETFL, flags);
+
+    // khttp_debug("Connect to SSL server success\n");
     return KHTTP_ERR_OK;
 }
 
