@@ -807,7 +807,7 @@ int khttp_ssl_set_cert_key(khttp_ctx *ctx, char *cert, char *key, char *pw)
 }
 #endif
 
-int khttp_set_username_password(khttp_ctx *ctx, char *username, char *password, int auth_type)
+int khttp_set_username_password(khttp_ctx *ctx, const char *username, const char *password, int auth_type)
 {
     if(ctx == NULL || username == NULL || password == NULL) return -KHTTP_ERR_PARAM;
     strncpy(ctx->username, username, KHTTP_USER_LEN);
