@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <time.h>
 #include <stdarg.h>
+#include <resolv.h>  // res_init, also include <arpa/nameser.h>
 
 static int khttp_socket_reuseaddr(int fd, int enable);
 static char *khttp_base64_encode(const unsigned char *data, size_t input_length, size_t *output_length);
@@ -1500,6 +1501,11 @@ int khttp_perform(khttp_ctx *ctx)
     sprintf(port, "%d", ctx->port);
     if((res = getaddrinfo(ctx->host, port, &hints, &result)) != 0){
         khttp_error("khttp DNS lookup failure. getaddrinfo: %s\n", gai_strerror(res));
+
+#if !defined(__ANDROID__) && !defined(__MAC__) && !defined(__IOS__)
+        res_init();
+#endif
+
         ret = -KHTTP_ERR_DNS;
         goto err;
     }
