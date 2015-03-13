@@ -7,6 +7,10 @@ OBJS=http_parser.o log.o khttp.o
 CFLAGS=-fPIC -O2 -g -DCOLOR_LOG -DOPENSSL -Wno-deprecated-declarations
 LDFLAGS=-lssl -lcrypto
 
+ifdef OSX
+CFLAGS += -D__MAC__ -D__IOS__
+endif
+
 all: static test
 
 static: $(OBJS)
