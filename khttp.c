@@ -1628,8 +1628,9 @@ err:
     return ret;
 }
 
-const char * khttp_code_description(int code) {
-    switch (code) {
+const char * khttp_strerror(int err) {
+    // negative
+    switch (-err) {
         case KHTTP_ERR_OK:          return "KHTTP_ERR_OK";
         case KHTTP_ERR_TIMEOUT:     return "KHTTP_ERR_TIMEOUT";
         case KHTTP_ERR_DNS:         return "KHTTP_ERR_DNS";
@@ -1646,7 +1647,7 @@ const char * khttp_code_description(int code) {
         case KHTTP_ERR_NO_FILE:     return "KHTTP_ERR_NO_FILE";
         case KHTTP_ERR_FILE_READ:   return "KHTTP_ERR_FILE_READ";
         default:
-            khttp_error("unknown error code %d\n", code);
+            khttp_error("unknown error code %d\n", err);
             return "KHTTP_ERR_UNKNOWN";
     }
 }
