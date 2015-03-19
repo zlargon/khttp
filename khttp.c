@@ -38,8 +38,8 @@ static int khttp_recv_http_resp(khttp_ctx *ctx);
 #define khttp_info(fmt,  agrs...) khttp_log("INFO",  __LINE__, __func__, fmt, ##agrs)
 #define khttp_warn(fmt,  agrs...) khttp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
 #define khttp_error(fmt, agrs...) khttp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
-static int khttp_log(const char * level, int line, const char * func, const char * format, ...);
-static int (* khttp_log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) = NULL;
+static void khttp_log(const char * level, int line, const char * func, const char * format, ...);
+static void (* khttp_log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) = NULL;
 
 #ifdef OPENSSL
 static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store);
@@ -1652,9 +1652,9 @@ const char * khttp_strerror(int err) {
     }
 }
 
-static int khttp_log(const char * level, int line, const char * func, const char * format, ...) {
+static void khttp_log(const char * level, int line, const char * func, const char * format, ...) {
     if (khttp_log_callback == NULL) {
-        return -1;
+        return;
     }
 
     char message[KHTTP_MESSAGE_MAX_LEN] = {0};
@@ -1667,10 +1667,8 @@ static int khttp_log(const char * level, int line, const char * func, const char
 
     // invoke log callback function
     khttp_log_callback(__FILE__, "KHTTP", level, line, func, message);
-    return 0;
 }
 
-int khttp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
+void khttp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
     khttp_log_callback = callback;
-    return 0;
 }

@@ -171,5 +171,5 @@ int khttp_set_username_password(khttp_ctx *ctx, const char *username, const char
 int khttp_set_post_data(khttp_ctx *ctx, char *data);
 int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type);
 const char * khttp_strerror(int err);
-int khttp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
+void khttp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
 #endif
