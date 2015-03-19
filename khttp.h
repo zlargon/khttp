@@ -59,6 +59,14 @@
 //#define KHTTP_DEBUG_SESS    1
 //#define KHTTP_DEBUG_FLOW    1
 
+// KHTTP Log Level
+enum KHTTP_LOG {
+    KHTTP_LOG_DEBUG = 1 << 0,
+    KHTTP_LOG_INFO  = 1 << 1,
+    KHTTP_LOG_WARN  = 1 << 2,
+    KHTTP_LOG_ERROR = 1 << 3
+};
+
 enum{
     KHTTP_FORM_STRING,
     KHTTP_FORM_FILE
@@ -171,5 +179,5 @@ int khttp_set_username_password(khttp_ctx *ctx, const char *username, const char
 int khttp_set_post_data(khttp_ctx *ctx, char *data);
 int khttp_set_post_form(khttp_ctx *ctx, char *key, char *value, int type);
 const char * khttp_strerror(int err);
-void khttp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
+void khttp_set_log_callback(void (* callback)(const char * file, const char * tag, int level, int line, const char * func, const char * message));
 #endif

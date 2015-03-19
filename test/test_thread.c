@@ -40,11 +40,11 @@ void *test_get_digest_https()
     }
 }
 
-void log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
-    if (strcmp(level, "DEBUG") == 0)     log_print(DEBUG, file, line, message);
-    else if (strcmp(level, "INFO") == 0) log_print(INFO,  file, line, message);
-    else if (strcmp(level, "WARN") == 0) log_print(WARN,  file, line, message);
-    else                                 log_print(ERROR, file, line, message);
+void log_callback(const char * file, const char * tag, int level, int line, const char * func, const char * message) {
+    if (level == KHTTP_LOG_DEBUG)   return log_print(DEBUG, file, line, message);
+    if (level == KHTTP_LOG_INFO)    return log_print(INFO,  file, line, message);
+    if (level == KHTTP_LOG_WARN)    return log_print(WARN,  file, line, message);
+    if (level == KHTTP_LOG_ERROR)   return log_print(ERROR, file, line, message);
 }
 
 int main()

@@ -34,12 +34,12 @@ static int khttp_recv_http_resp(khttp_ctx *ctx);
 
 // KHTTP Log
 #define KHTTP_MESSAGE_MAX_LEN  2048
-#define khttp_debug(fmt, agrs...) khttp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
-#define khttp_info(fmt,  agrs...) khttp_log("INFO",  __LINE__, __func__, fmt, ##agrs)
-#define khttp_warn(fmt,  agrs...) khttp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
-#define khttp_error(fmt, agrs...) khttp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
-static void khttp_log(const char * level, int line, const char * func, const char * format, ...);
-static void (* khttp_log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) = NULL;
+#define khttp_debug(fmt, agrs...) khttp_log(KHTTP_LOG_DEBUG, __LINE__, __func__, fmt, ##agrs)
+#define khttp_info(fmt,  agrs...) khttp_log(KHTTP_LOG_INFO,  __LINE__, __func__, fmt, ##agrs)
+#define khttp_warn(fmt,  agrs...) khttp_log(KHTTP_LOG_WARN,  __LINE__, __func__, fmt, ##agrs)
+#define khttp_error(fmt, agrs...) khttp_log(KHTTP_LOG_ERROR, __LINE__, __func__, fmt, ##agrs)
+static void khttp_log(int level, int line, const char * func, const char * format, ...);
+static void (* khttp_log_callback)(const char * file, const char * tag, int level, int line, const char * func, const char * message) = NULL;
 
 #ifdef OPENSSL
 static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store);
@@ -1652,7 +1652,7 @@ const char * khttp_strerror(int err) {
     }
 }
 
-static void khttp_log(const char * level, int line, const char * func, const char * format, ...) {
+static void khttp_log(int level, int line, const char * func, const char * format, ...) {
     if (khttp_log_callback == NULL) {
         return;
     }
@@ -1669,6 +1669,6 @@ static void khttp_log(const char * level, int line, const char * func, const cha
     khttp_log_callback(__FILE__, "KHTTP", level, line, func, message);
 }
 
-void khttp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
+void khttp_set_log_callback(void (* callback)(const char * file, const char * tag, int level, int line, const char * func, const char * message)) {
     khttp_log_callback = callback;
 }
