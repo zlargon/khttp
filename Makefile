@@ -1,9 +1,9 @@
 .PHONY: static test
 
 LIB_PREFIX = libkhttp
-CFLAGS     = -fPIC -O2 -g -DOPENSSL
+CFLAGS     = -fPIC -O2 -g -DOPENSSL -I./http-parser
 LDFLAGS    = -lssl -lcrypto
-OBJS       = khttp.o http_parser.o
+OBJS       = khttp.o http-parser/http_parser.o
 
 ifdef OSX
 CFLAGS += -D__MAC__ -D__IOS__ -Wno-deprecated-declarations
@@ -23,4 +23,5 @@ test:
 
 clean:
 	rm -rf *.o *.a *.so *.exe
+	$(MAKE) -C http-parser clean
 	$(MAKE) -C test clean

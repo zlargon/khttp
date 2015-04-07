@@ -1,4 +1,4 @@
-CFLAGS  = -I../ -DCOLOR_LOG
+CFLAGS  = -I../ -I../http-parser -DCOLOR_LOG
 LDFLAGS = ../libkhttp.a -lssl -lcrypto
 OBJ     = log.o
 
