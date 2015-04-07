@@ -1,14 +1,12 @@
 .PHONY: static test
 
-LIB_PREFIX=libkhttp
-
-OBJS=http_parser.o log.o khttp.o
-
-CFLAGS=-fPIC -O2 -g -DCOLOR_LOG -DOPENSSL -Wno-deprecated-declarations
-LDFLAGS=-lssl -lcrypto
+LIB_PREFIX = libkhttp
+CFLAGS     = -fPIC -O2 -g -DOPENSSL
+LDFLAGS    = -lssl -lcrypto
+OBJS       = khttp.o http_parser.o
 
 ifdef OSX
-CFLAGS += -D__MAC__ -D__IOS__
+CFLAGS += -D__MAC__ -D__IOS__ -Wno-deprecated-declarations
 endif
 
 all: static test
