@@ -1,8 +1,9 @@
-#include "khttp.h"
+#include <stdbool.h>
 #include <errno.h>
 #include <time.h>
 #include <stdarg.h>
 #include <resolv.h>  // res_init, also include <arpa/nameser.h>
+#include "khttp.h"
 
 static int khttp_socket_reuseaddr(int fd, int enable);
 static char *khttp_base64_encode(const unsigned char *data, size_t input_length, size_t *output_length);
@@ -655,14 +656,17 @@ static int ssl_ca_verify_cb(int ok, X509_STORE_CTX *store)
     return ok;
 }
 
-static int khttp_ssl_setup(khttp_ctx *ctx)
-{
-    int ret = 0;
-    SSL_load_error_strings();
-    if(SSL_library_init() != 1) {
-        khttp_error("SSL library init failure\n");
-        return -KHTTP_ERR_SSL;
+static int khttp_ssl_setup(khttp_ctx *ctx) {
+
+    // only init SSL library once
+    static bool ssl_is_init = false;
+    if (ssl_is_init == false) {
+        SSL_library_init();         // always return 1
+        SSL_load_error_strings();
+        ssl_is_init = true;
     }
+
+    int ret = 0;
     if(ctx->ssl_method == KHTTP_METHOD_SSLV2_3){
         if( (ctx->ssl_ctx = SSL_CTX_new(SSLv23_client_method())) == NULL) {
             khttp_error("SSL setup request method SSLv23 failure\n");
