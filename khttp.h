@@ -22,36 +22,37 @@
 #include <openssl/err.h>
 #endif
 
-#define KHTTP_HOST_LEN      1024
-#define KHTTP_PATH_LEN      1024
-#define KHTTP_PASS_LEN      128
-#define KHTTP_USER_LEN      128
+#define KHTTP_HOST_LEN          1024
+#define KHTTP_PATH_LEN          1024
+#define KHTTP_PASS_LEN          128
+#define KHTTP_USER_LEN          128
 
-#define KHTTP_REQ_SIZE      2048
-#define KHTTP_SSL_DATA_LEN  256
+#define KHTTP_REQ_SIZE          2048
+#define KHTTP_SSL_DATA_LEN      256
 
-#define KHTTP_NONCE_LEN     64
-#define KHTTP_QOP_LEN       64
-#define KHTTP_REALM_LEN     64
-#define KHTTP_OPAQUE_LEN    64
-#define KHTTP_BOUND_LEN     32
+#define KHTTP_NONCE_LEN         64
+#define KHTTP_QOP_LEN           64
+#define KHTTP_REALM_LEN         64
+#define KHTTP_OPAQUE_LEN        64
+#define KHTTP_BOUND_LEN         32
+#define KHTTP_CONTENT_TYPE_LEN  256
 
-#define KHTTP_CNONCE_LEN    512
-#define KHTTP_RESP_LEN      1024
+#define KHTTP_CNONCE_LEN        512
+#define KHTTP_RESP_LEN          1024
 
-#define KHTTP_HTTP_PORT     80
-#define KHTTP_HTTPS_PORT    443
+#define KHTTP_HTTP_PORT         80
+#define KHTTP_HTTPS_PORT        443
 
-#define KHTTP_HEADER_MAX    32
+#define KHTTP_HEADER_MAX        32
 
-#define KHTTP_ENABLE        1
-#define KHTTP_DISABLE       0
+#define KHTTP_ENABLE            1
+#define KHTTP_DISABLE           0
 
-#define KHTTP_SEND_TIMEO    10000
-#define KHTTP_RECV_TIMEO    10000
+#define KHTTP_SEND_TIMEO        10000
+#define KHTTP_RECV_TIMEO        10000
 
-#define KHTTP_SSL_DEPTH     3
-#define KHTTP_NETWORK_BUF   1500
+#define KHTTP_SSL_DEPTH         3
+#define KHTTP_NETWORK_BUF       1500
 
 
 #define KHTTP_USER_AGENT    "khttp/0.1"
@@ -130,6 +131,7 @@ typedef struct khttp_ctx {
     int                 header_count;
     char                *header_field[KHTTP_HEADER_MAX];
     char                *header_value[KHTTP_HEADER_MAX];
+    char                content_type[KHTTP_CONTENT_TYPE_LEN];   // Content-Type default is application/x-www-form-urlencoded
     char                host[KHTTP_HOST_LEN];
     char                path[KHTTP_PATH_LEN];
     int                 port;
