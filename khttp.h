@@ -173,6 +173,7 @@ khttp_ctx *khttp_new();
 void khttp_destroy(khttp_ctx *ctx);
 int khttp_perform(khttp_ctx *ctx);
 int khttp_set_method(khttp_ctx *ctx, int method);
+int khttp_set_content_type(khttp_ctx * ctx, const char * content_type);
 int khttp_set_uri(khttp_ctx *ctx, char *uri);
 int khttp_ssl_set_method(khttp_ctx *ctx, int method);
 int khttp_ssl_skip_auth(khttp_ctx *ctx);

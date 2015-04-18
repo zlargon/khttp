@@ -425,6 +425,23 @@ int khttp_set_method(khttp_ctx *ctx, int method)
     return KHTTP_ERR_OK;
 }
 
+int khttp_set_content_type(khttp_ctx * ctx, const char * content_type) {
+    if (ctx == NULL) {
+        khttp_error("khttp_ctx should not be null\n");
+        return -KHTTP_ERR_PARAM;
+    }
+
+    if (content_type == NULL || strlen(content_type) <= 0) {
+        khttp_error("content_type should not be null or empty\n");
+        return -KHTTP_ERR_PARAM;
+    }
+
+    // set content type
+    memset(ctx->content_type, 0, KHTTP_CONTENT_TYPE_LEN);
+    sprintf(ctx->content_type, "%s", content_type);
+    return KHTTP_ERR_OK;
+}
+
 static void khttp_copy_host(char *in, char *out)
 {
     int i = 0;
