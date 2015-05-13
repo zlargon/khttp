@@ -1530,16 +1530,26 @@ int khttp_perform(khttp_ctx *ctx)
     int ret = KHTTP_ERR_OK;
     char port[16];
     sprintf(port, "%d", ctx->port);
-    if((res = getaddrinfo(ctx->host, port, &hints, &result)) != 0){
-        khttp_error("khttp DNS lookup failure. getaddrinfo: %s\n", gai_strerror(res));
+
+    // Get IP address from DNS server
+    res = getaddrinfo(ctx->host, port, &hints, &result);
 
 #if !defined(__ANDROID__) && !defined(__MAC__) && !defined(__IOS__)
+    // do res_init(), and do getaddrinfo() again
+    if (res != 0) {
+        khttp_info("reload '/etc/resolv.conf' ...\n");
         res_init();
+        res = getaddrinfo(ctx->host, port, &hints, &result);
+    }
 #endif
 
+    // check getaddrinfo return value
+    if (res != 0) {
+        khttp_error("khttp DNS lookup failure. getaddrinfo: %s (%d)\n", gai_strerror(res), res);
         ret = -KHTTP_ERR_DNS;
         goto err;
     }
+
     ctx->serv_addr.sin_addr = ((struct sockaddr_in *)result->ai_addr)->sin_addr;
     ctx->serv_addr.sin_port = htons(ctx->port);
     //char addrstr[100];
