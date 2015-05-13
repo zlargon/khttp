@@ -1562,15 +1562,72 @@ int khttp_perform(khttp_ctx *ctx) {
         goto end;
     }
 
-    // connect
-    if (connect(ctx->fd, servinfo->ai_addr, servinfo->ai_addrlen)!= 0) {
-        if (errno == -EINPROGRESS) {
-            // sleep(1);
-        } else {
-           khttp_error("khttp connect to server error %d(%s)\n", errno, strerror(errno));
-           result = -KHTTP_ERR_CONNECT;
-           goto end;
+    // get socket status flag
+    int flags = fcntl(ctx->fd, F_GETFL);
+    if (flags == -1) {
+        khttp_error("fcntl F_GETFL failed, errno = %s (%d)\n", strerror(errno), errno);
+        ret = -KHTTP_ERR_SOCK;
+        goto end;
+    }
+
+    // set non-blocking flag
+    ret = fcntl(ctx->fd, F_SETFL, flags | O_NONBLOCK);
+    if (ret == -1) {
+        khttp_error("fcntl F_SETFL failed, errno = %s (%d)\n", strerror(errno), errno);
+        result = -KHTTP_ERR_SOCK;
+        goto end;
+    }
+
+    // connect (non-blocking)
+    ret = connect(ctx->fd, servinfo->ai_addr, servinfo->ai_addrlen);
+    if (ret == -1 && errno != EINPROGRESS) {
+        khttp_error("connect failed, errno = %s (%d)\n", strerror(errno), errno);
+        result = -KHTTP_ERR_CONNECT;
+        goto end;
+    }
+
+    // add ctx->fd to fdset
+    fd_set fdset;
+    FD_ZERO(&fdset);
+    FD_SET(ctx->fd, &fdset);
+    struct timeval tv = {
+        .tv_sec = 5         // select timeout 5 seconds
+    };
+
+    // select ctx->fd
+    ret = select(ctx->fd + 1, NULL, &fdset, NULL, &tv);
+    if (ret == 0) {
+        khttp_error("connection timeout\n");
+        result = -KHTTP_ERR_TIMEOUT;
+        goto end;
+    } else if (ret < 0) {
+        khttp_error("select error, errno = %s (%d)\n", strerror(errno), errno);
+        result = -KHTTP_ERR_CONNECT;
+        goto end;
+    } else {
+        // ret > 0
+        int so_error;
+        socklen_t len = sizeof(int);
+        ret = getsockopt(ctx->fd, SOL_SOCKET, SO_ERROR, &so_error, &len);
+        if (ret != 0) {
+            khttp_error("getsockopt SOL_SOCKET failed, errno = %s (%d)\n", strerror(errno), errno);
+            result = -KHTTP_ERR_CONNECT;
+            goto end;
         }
+
+        if (so_error != 0) {
+            khttp_error("connect failed, so_error = %s (%d)\n", strerror(so_error), so_error);
+            result = -KHTTP_ERR_CONNECT;
+            goto end;
+        }
+    }
+
+    // connect success, set back to original flags
+    ret = fcntl(ctx->fd, F_SETFL, flags);
+    if (ret == -1) {
+        khttp_error("fcntl F_SETFL failed, errno = %s (%d)\n", strerror(errno), errno);
+        result = -KHTTP_ERR_SOCK;
+        goto end;
     }
     // khttp_debug("khttp connect to server successfully\n");
 
