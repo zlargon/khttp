@@ -1518,155 +1518,162 @@ end:
     return KHTTP_ERR_OK;
 }
 
-int khttp_perform(khttp_ctx *ctx)
-{
-    char *str = NULL;
-    struct addrinfo hints;
-    struct addrinfo *result;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_family = AF_INET;
-    int res = 0;
-    int ret = KHTTP_ERR_OK;
-    char port[16];
-    sprintf(port, "%d", ctx->port);
+int khttp_perform(khttp_ctx *ctx) {
+    int result = KHTTP_ERR_OK;
 
     // Get IP address from DNS server
-    res = getaddrinfo(ctx->host, port, &hints, &result);
+    struct addrinfo * servinfo = NULL;     // need to be free
+    struct addrinfo hints = {
+        .ai_socktype = SOCK_STREAM,
+        .ai_family   = AF_INET
+    };
+    char port[16] = {};
+    sprintf(port, "%d", ctx->port);
+    int ret = getaddrinfo(ctx->host, port, &hints, &servinfo);
 
 #if !defined(__ANDROID__) && !defined(__MAC__) && !defined(__IOS__)
     // do res_init(), and do getaddrinfo() again
-    if (res != 0) {
+    if (ret != 0) {
         khttp_info("reload '/etc/resolv.conf' ...\n");
         res_init();
-        res = getaddrinfo(ctx->host, port, &hints, &result);
+        ret = getaddrinfo(ctx->host, port, &hints, &servinfo);
     }
 #endif
 
     // check getaddrinfo return value
-    if (res != 0) {
-        khttp_error("khttp DNS lookup failure. getaddrinfo: %s (%d)\n", gai_strerror(res), res);
-        ret = -KHTTP_ERR_DNS;
-        goto err;
+    if (ret != 0) {
+        khttp_error("khttp DNS lookup failure. getaddrinfo: %s (%d)\n", gai_strerror(ret), ret);
+        result = -KHTTP_ERR_DNS;
+        goto end;
     }
 
-    ctx->serv_addr.sin_addr = ((struct sockaddr_in *)result->ai_addr)->sin_addr;
+    // setup serv_addr
+    ctx->serv_addr.sin_addr = ((struct sockaddr_in *)servinfo->ai_addr)->sin_addr;
     ctx->serv_addr.sin_port = htons(ctx->port);
-    //char addrstr[100];
-    //inet_ntop (result->ai_family, &ctx->serv_addr.sin_addr, addrstr, 100);
-    //khttp_debug("IP:%s\n", addrstr);
+    // char addrstr[100];
+    // inet_ntop (servinfo->ai_family, &ctx->serv_addr.sin_addr, addrstr, 100);
+    // khttp_debug("IP:%s\n", addrstr);
+
+    // create socket
     ctx->fd = khttp_socket_create();
-    if(ctx->fd < 1){
+    if (ctx->fd < 1) {
         khttp_error("khttp socket create error\n");
-        ret = -KHTTP_ERR_SOCK;
-        goto err1;
+        result = -KHTTP_ERR_SOCK;
+        goto end;
     }
-    if(connect(ctx->fd, result->ai_addr, result->ai_addrlen)!= 0) {
-        if(errno == -EINPROGRESS){
-            //sleep(1);
-        }else{
+
+    // connect
+    if (connect(ctx->fd, servinfo->ai_addr, servinfo->ai_addrlen)!= 0) {
+        if (errno == -EINPROGRESS) {
+            // sleep(1);
+        } else {
            khttp_error("khttp connect to server error %d(%s)\n", errno, strerror(errno));
-           ret = -KHTTP_ERR_CONNECT;
-           goto err1;
+           result = -KHTTP_ERR_CONNECT;
+           goto end;
         }
     }
-    //khttp_debug("khttp connect to server successfully\n");
-    freeaddrinfo(result);
-    if(ctx->proto == KHTTP_HTTPS){
+    // khttp_debug("khttp connect to server successfully\n");
+
+    // setup SSL
+    if (ctx->proto == KHTTP_HTTPS) {
 #ifdef OPENSSL
-        if(khttp_ssl_setup(ctx) != KHTTP_ERR_OK){
+        if (khttp_ssl_setup(ctx) != KHTTP_ERR_OK) {
             khttp_error("khttp ssl setup failure\n");
-            return -KHTTP_ERR_SSL;
+            result = -KHTTP_ERR_SSL;
+            goto end;
         }
-        //khttp_debug("khttp setup ssl connection successfully\n");
+        // khttp_debug("khttp setup ssl connection successfully\n");
 #else
-        return -KHTTP_ERR_NOT_SUPP;
+        result = -KHTTP_ERR_NOT_SUPP;
+        goto end;
 #endif
     }
+
     int count = 0;
-    for(;;)
-    {
-        if(ctx->hp.status_code == 401){
-            //khttp_debug("Send HTTP authentication response\n");
-            //FIXME change to khttp_send_http_auth
-            if((res = khttp_send_http_auth(ctx)) != 0){
-                khttp_error("khttp send HTTP authentication response failure %d\n", res);
+    for (;;) {
+        if (ctx->hp.status_code == 401) {
+            // khttp_debug("Send HTTP authentication response\n");
+            // FIXME change to khttp_send_http_auth
+            if ((ret = khttp_send_http_auth(ctx)) != 0) {
+                khttp_error("khttp send HTTP authentication response failure %d\n", ret);
                 break;
             }
-            //FIXME
+            // FIXME
             ctx->hp.status_code = 0;
-        }else if(ctx->hp.status_code == 200){
-            if(ctx->cont == 1 && ctx->form != NULL){
+        } else if (ctx->hp.status_code == 200) {
+            if (ctx->cont == 1 && ctx->form != NULL) {
                 khttp_send_form(ctx);
-                ctx->cont = 0;//Clean continue flag for next read
-                goto end;//Send data then end
+                ctx->cont = 0;      // Clean continue flag for next read
+                goto end;           // Send data then end
             }
-        }else if(ctx->hp.status_code == 100){
-            if(ctx->cont == 1 && ctx->form != NULL){
+        } else if (ctx->hp.status_code == 100) {
+            if (ctx->cont == 1 && ctx->form != NULL) {
                 khttp_send_form(ctx);
-                ctx->cont = 0;//Clean continue flag for next read
+                ctx->cont = 0;      // Clean continue flag for next read
             }
-            //TODO What's next if no form or data to send
-        }else{
-            //khttp_debug("Send HTTP request\n");
-            if((res = khttp_send_http_req(ctx)) != 0){
-                khttp_error("khttp send HTTP request failure %d\n", res);
+            // TODO What's next if no form or data to send
+        } else {
+            // khttp_debug("Send HTTP request\n");
+            if ((ret = khttp_send_http_req(ctx)) != 0) {
+                khttp_error("khttp send HTTP request failure %d\n", ret);
                 break;
             }
         }
-        //Free all header before recv data
+
+        // free all header before recv data
         khttp_free_header(ctx);
         khttp_free_body(ctx);
-        if((res = khttp_recv_http_resp(ctx)) != 0){
-            khttp_error("khttp recv HTTP response failure %d\n", res);
-            ret = res;
-            goto err;
+        if ((ret = khttp_recv_http_resp(ctx)) != 0) {
+            khttp_error("khttp recv HTTP response failure %d\n", ret);
+            result = ret;
+            goto end;
         }
-        //khttp_debug("receive HTTP response success\n");
-        switch(ctx->hp.status_code)
-        {
-            case 401:
-                str = khttp_find_header(ctx, "WWW-Authenticate");
-                if(khttp_parse_auth(ctx, str) != 0) {
+        // khttp_debug("receive HTTP response success\n");
+
+        switch(ctx->hp.status_code) {
+            case 401: {
+                char * str = khttp_find_header(ctx, "WWW-Authenticate");
+                if (khttp_parse_auth(ctx, str) != 0) {
                     khttp_error("khttp parse auth string failure\n");
-                    goto err;
+                    goto end;
                 }
-                if(count == 1 || (count == 0 && ctx->auth_type == KHTTP_AUTH_BASIC)){
+                if (count == 1 || (count == 0 && ctx->auth_type == KHTTP_AUTH_BASIC)) {
                     goto end;
                 }
                 break;
+            }
+
             case 200:
-                //khttp_info("GOT 200 OK count:%d\n", count);
-                if(ctx->cont == 1 && count == 0){
-                    //khttp_info("Got 200 OK before send post data/form\n");
+                // khttp_info("GOT 200 OK count:%d\n", count);
+                if (ctx->cont == 1 && count == 0) {
+                    // khttp_info("Got 200 OK before send post data/form\n");
                     break;
                 }
                 goto end;
-                break;
+
             case 100:
-                //khttp_info("GOT 100 Continue\n");
-                if(ctx->cont == 1 && count == 0){
+                // khttp_info("GOT 100 Continue\n");
+                if (ctx->cont == 1 && count == 0) {
                     break;
                 }
-                //khttp_send_form(ctx);
-                //Send form data...
+                // khttp_send_form(ctx);
+                // Send form data...
                 break;
+
             default:
                 goto end;
-                break;
         }
+
         // Session count
         count ++;
-        //khttp_debug("recv http data\n");
-        //khttp_debug("end\n%s\n", ctx->body);
-        //printf("end\n%s\n", (char *)ctx->body);
+        // khttp_debug("recv http data\n");
+        // khttp_debug("end\n%s\n", ctx->body);
+        // printf("end\n%s\n", (char *)ctx->body);
     }
+
 end:
-    return ret;
-err1:
-    freeaddrinfo(result);
-err:
-    return ret;
+    if (servinfo != NULL) freeaddrinfo(servinfo);
+    return result;
 }
 
 const char * khttp_strerror(int err) {
