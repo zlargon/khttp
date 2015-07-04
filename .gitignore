@@ -28,5 +28,3 @@
 *.x86_64
 *.hex
 
-# third_party
-http-parser
